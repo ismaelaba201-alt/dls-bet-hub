@@ -20,6 +20,9 @@ import {
 } from "lucide-react";
 
 import { MatchCreator } from "@/components/MatchCreator";
+import { BetSlip } from "@/components/BetSlip";
+import type { MatchOdds } from "@/lib/odds";
+import { slipLines, type Slip } from "@/lib/slip";
 import stadiumPitch from "@/assets/stadium-pitch.jpg";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -63,6 +66,9 @@ function Index() {
   const [toast, setToast] = useState("");
   const [seconds, setSeconds] = useState(872);
   const [hubView, setHubView] = useState<HubView>("landing");
+  const [matches, setMatches] = useState<MatchOdds[]>([]);
+  const [slip, setSlip] = useState<Slip>({});
+  const slipCount = slipLines(slip, matches).length;
   const [fixture, setFixture] = useState({ home: "", away: "" });
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -176,13 +182,15 @@ function Index() {
                 </Button>
               </section>
 
-              <MatchCreator admin={admin} notify={setToast} />
+              <MatchCreator admin={admin} notify={setToast} matches={matches} setMatches={setMatches} slip={slip} setSlip={setSlip} />
             </div>
           )}
 
           {tab === "dlshub" && <Hub view={hubView} setView={setHubView} admin={admin} notify={setToast} />}
 
-          {tab !== "matchday" && tab !== "dlshub" && (
+          {tab === "betslip" && <BetSlip matches={matches} slip={slip} setSlip={setSlip} notify={setToast} onBrowse={() => setTab("matchday")} />}
+
+          {tab !== "matchday" && tab !== "dlshub" && tab !== "betslip" && (
             <section className="glass-panel mt-20 flex min-h-72 flex-col items-center justify-center rounded-lg px-8 text-center">
               <Sparkles className="mb-4 text-primary" size={38} />
               <h2 className="font-heading text-3xl font-bold uppercase">{placeholderCopy[tab][0]}</h2>
@@ -191,6 +199,12 @@ function Index() {
           )}
         </main>
       </div>
+
+      {tab === "matchday" && slipCount > 0 && (
+        <Button onClick={() => setTab("betslip")} className="fixed bottom-20 right-4 z-40 h-12 rounded-full px-5 text-xs font-black shadow-xl">
+          📋 Bet Slip <span className="ml-1 grid min-w-5 place-items-center rounded-full bg-background px-1.5 text-[10px] text-primary">{slipCount}</span>
+        </Button>
+      )}
 
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 px-2 pb-[max(.55rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-xl" aria-label="Main navigation">
         <div className="mx-auto grid max-w-md grid-cols-5 gap-1">
