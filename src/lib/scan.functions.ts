@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 
 type Fx = { home: string; away: string; time: string };
-type Score = { home: string; away: string; homeScore: number; awayScore: number };
+type Score = { home: string; away: string; homeScore: number; awayScore: number; raw: string };
 
 const validate = (d: { image: string }) => {
   if (!d?.image?.startsWith("data:image/")) throw new Error("Invalid image");
@@ -50,6 +50,6 @@ export const scanFixtures = createServerFn({ method: "POST" })
 export const scanResults = createServerFn({ method: "POST" })
   .inputValidator(validate)
   .handler(async ({ data }): Promise<{ scores: Score[]; error?: string | undefined }> => {
-    const r = await readImage<Score>(data.image, "Read this screenshot of completed football matches. Extract every finished match: home team, away team, and the final full-time goals for each. Use full club names. Return an empty list if no final scores are visible.", { home: { type: "string" }, away: { type: "string" }, homeScore: { type: "integer" }, awayScore: { type: "integer" } });
+    const r = await readImage<Score>(data.image, "Read this screenshot of completed football matches. Extract every finished match: home team, away team, and the final full-time goals for each. Use full club names. Also include the full raw text line for each match exactly as shown. Return an empty list if no final scores are visible.", { raw: { type: "string" }, home: { type: "string" }, away: { type: "string" }, homeScore: { type: "integer" }, awayScore: { type: "integer" } });
     return { scores: r.items, error: r.error };
   });
