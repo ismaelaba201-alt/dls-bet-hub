@@ -22,6 +22,7 @@ import {
 import { MatchCreator } from "@/components/MatchCreator";
 import { BetSlip } from "@/components/BetSlip";
 import { History as HistoryView } from "@/components/History";
+import { GameCodeLoader } from "@/components/GameCodeLoader";
 import type { Bet } from "@/lib/bets";
 import type { MatchOdds } from "@/lib/odds";
 import { slipLines, type Slip } from "@/lib/slip";
@@ -54,11 +55,6 @@ const tabs: Array<{ id: Tab; label: string; icon: typeof Trophy }> = [
   { id: "history", label: "History", icon: History },
 ];
 
-const placeholderCopy = {
-  betslip: ["Bet Slip", "Selected match picks and active betting slips will appear here."],
-  gamecode: ["Game Codes", "Saved game codes from your matchdays will appear here."],
-  history: ["Match History", "Your completed matchdays and results will appear here."],
-} as const;
 
 function Index() {
   const [tab, setTab] = useState<Tab>("matchday");
@@ -70,6 +66,7 @@ function Index() {
   const [hubView, setHubView] = useState<HubView>("landing");
   const [matches, setMatches] = useState<MatchOdds[]>([]);
   const [slip, setSlip] = useState<Slip>({});
+  const [gameCode, setGameCode] = useState<string | null>(null);
   const [bets, setBets] = useState<Bet[]>([]);
   const [betsLoaded, setBetsLoaded] = useState(false);
   useEffect(() => {
@@ -191,23 +188,18 @@ function Index() {
                 </Button>
               </section>
 
-              <MatchCreator admin={admin} notify={setToast} matches={matches} setMatches={setMatches} slip={slip} setSlip={setSlip} />
+              <MatchCreator admin={admin} notify={setToast} matches={matches} setMatches={setMatches} slip={slip} setSlip={setSlip} onPublished={setGameCode} />
             </div>
           )}
 
           {tab === "dlshub" && <Hub view={hubView} setView={setHubView} admin={admin} notify={setToast} />}
 
-          {tab === "betslip" && <BetSlip matches={matches} slip={slip} setSlip={setSlip} onPlace={(b) => { setBets((old) => [b, ...old]); setSlip({}); setTab("history"); setToast("Bet placed — pending result"); }} onBrowse={() => setTab("matchday")} />}
+          {tab === "betslip" && <BetSlip matches={matches} slip={slip} setSlip={setSlip} gameCode={gameCode} notify={setToast} onLoadCode={(g, m, s) => { setGameCode(g); setMatches(m); setSlip(s); setToast("Bet code loaded — enter your stake"); }} onPlace={(b) => { setBets((old) => [b, ...old]); setSlip({}); setTab("history"); setToast("Bet placed — pending result"); }} onBrowse={() => setTab("matchday")} />}
 
-          {tab === "history" && <HistoryView bets={bets} notify={setToast} onSettle={(b) => setBets((old) => old.map((x) => (x.id === b.id ? b : x)))} />}
+          {tab === "history" && <HistoryView admin={admin} bets={bets} notify={setToast} onSettle={(b) => setBets((old) => old.map((x) => (x.id === b.id ? b : x)))} />}
 
-          {tab !== "matchday" && tab !== "dlshub" && tab !== "betslip" && tab !== "history" && (
-            <section className="glass-panel mt-20 flex min-h-72 flex-col items-center justify-center rounded-lg px-8 text-center">
-              <Sparkles className="mb-4 text-primary" size={38} />
-              <h2 className="font-heading text-3xl font-bold uppercase">{placeholderCopy[tab][0]}</h2>
-              <p className="mt-2 text-xs leading-5 text-muted-foreground">{placeholderCopy[tab][1]}</p>
-            </section>
-          )}
+          {tab === "gamecode" && <GameCodeLoader onLoaded={(code, m) => { setGameCode(code); setMatches(m); setSlip({}); setTab("matchday"); setToast(`${m.length} matches loaded`); }} />}
+
         </main>
       </div>
 

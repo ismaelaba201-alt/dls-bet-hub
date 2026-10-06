@@ -48,3 +48,13 @@ export function stakeError(stake: number): string | null {
 }
 
 export const payout = (odds: number, stake: number) => Math.round(odds * stake * 100) / 100;
+
+// Rebuild a slip from shared bet-code legs, keeping only selections that still exist.
+export function slipFromLegs(legs: { matchId: string; key: string }[], matches: MatchOdds[]): Slip {
+  let slip: Slip = {};
+  for (const l of legs) {
+    const s = matches.find((m) => m.id === l.matchId)?.selections.find((x) => x.key === l.key);
+    if (s) slip = togglePick(slip, l.matchId, s);
+  }
+  return slip;
+}

@@ -39,3 +39,13 @@ describe("bet slip rules", () => {
     expect(payout(1.8, 50)).toBe(90);
   });
 });
+
+import { slipFromLegs } from "./slip";
+import { generateOdds } from "./odds";
+describe("slipFromLegs", () => {
+  it("rebuilds the exact shared picks", () => {
+    const m = generateOdds({ home: "Arsenal", away: "Chelsea", time: "" }, "m1");
+    const slip = slipFromLegs([{ matchId: "m1", key: "1X" }, { matchId: "m1", key: "U3.5" }], [m]);
+    expect(slip).toEqual({ m1: { result: "1X", goals: "U3.5" } });
+  });
+});

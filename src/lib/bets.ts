@@ -3,7 +3,7 @@ import type { Market } from "./odds";
 export type LegResult = "won" | "lost";
 export type Leg = { matchId: string; home: string; away: string; time: string; market: Market; key: string; label: string; odds: number; result?: LegResult; score?: string };
 export type BetStatus = "PENDING" | "WON" | "LOST";
-export type Bet = { id: string; placedAt: number; legs: Leg[]; totalOdds: number; stake: number; payout: number; status: BetStatus; settledAt?: number };
+export type Bet = { id: string; placedAt: number; legs: Leg[]; totalOdds: number; stake: number; payout: number; status: BetStatus; settledAt?: number; gameCode?: string | undefined; betCode?: string | undefined; resultImage?: string | undefined };
 export type ScoreLine = { home: string; away: string; homeScore: number; awayScore: number };
 
 export const MISMATCH_ERROR = "Uploaded screenshot does not match the fixtures on this bet ticket.";
@@ -108,4 +108,12 @@ export function settleWithScores(bet: Bet, fixtures: FixtureScore[], now = Date.
 export function settleBet(bet: Bet, scores: ScoreLine[], now = Date.now()): { bet: Bet } | { error: string } {
   const { fixtures, complete } = matchScores(bet, cleanScores(scores));
   return complete ? settleWithScores(bet, fixtures, now) : { error: MISMATCH_ERROR };
+}
+
+// Match OCR scores against a plain fixture list (used for official game results).
+export function matchFixtureList(list: { id: string; home: string; away: string }[], scores: ScoreLine[]): FixtureScore[] {
+  return list.map((f) => {
+    const s = scores.find((r) => sameTeam(r.home, f.home) && sameTeam(r.away, f.away));
+    return { matchId: f.id, home: f.home, away: f.away, homeScore: s?.homeScore ?? null, awayScore: s?.awayScore ?? null };
+  });
 }

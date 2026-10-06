@@ -1,4 +1,5 @@
 import { useRef, useState, type ChangeEvent } from "react";
+import { publishGame } from "@/lib/games.functions";
 import type React from "react";
 import { ChevronDown, Copy, FileUp, Loader2, Plus, ScanLine, Trash2, X } from "lucide-react";
 
@@ -10,7 +11,7 @@ import { isLocked, isPicked, togglePick, type Slip } from "@/lib/slip";
 
 const MARKETS: Market[] = ["1X2", "Double Chance", "Over/Under"];
 
-export function MatchCreator({ admin, notify, matches, setMatches, slip, setSlip }: { admin: boolean; notify: (m: string) => void; matches: MatchOdds[]; setMatches: React.Dispatch<React.SetStateAction<MatchOdds[]>>; slip: Slip; setSlip: React.Dispatch<React.SetStateAction<Slip>> }) {
+export function MatchCreator({ admin, notify, matches, setMatches, slip, setSlip, onPublished }: { admin: boolean; notify: (m: string) => void; matches: MatchOdds[]; setMatches: React.Dispatch<React.SetStateAction<MatchOdds[]>>; slip: Slip; setSlip: React.Dispatch<React.SetStateAction<Slip>>; onPublished?: (code: string) => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [scanning, setScanning] = useState(false);
   const [draft, setDraft] = useState<Fixture[] | null>(null);
@@ -44,9 +45,12 @@ export function MatchCreator({ admin, notify, matches, setMatches, slip, setSlip
   const editOdds = (id: string, key: string, v: string) => setMatches((ms) => ms.map((m) => m.id !== id ? m : { ...m, selections: m.selections.map((s) => s.key === key ? { ...s, odds: Number(v) || s.odds } : s) }));
   const fixOdds = (id: string) => setMatches((ms) => ms.map((m) => m.id !== id ? m : { ...m, selections: m.selections.map((s) => ({ ...s, odds: clampOdds(s.odds) })) }));
 
-  const publish = () => {
+  const publish = async () => {
     const c = `DLS-${matches.length}${matches.map((m) => (m.home[0] ?? "") + (m.away[0] ?? "")).join("").toUpperCase().slice(0, 6)}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+    const res = await publishGame({ data: { code: c, matches } }).catch(() => ({ ok: false }));
+    if (!res.ok) { notify("Could not publish game code"); return; }
     setCode(c);
+    onPublished?.(c);
     navigator.clipboard?.writeText(c).catch(() => {});
     notify("Game code published & copied");
   };
