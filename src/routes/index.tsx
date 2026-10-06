@@ -175,33 +175,7 @@ function Index() {
                 </Button>
               </section>
 
-              <section className="glass-panel space-y-3 rounded-lg p-4">
-                <input ref={inputRef} type="file" accept="image/png,image/jpeg" onChange={selectImage} className="hidden" />
-                {!preview ? (
-                  <Button variant="outline" onClick={() => inputRef.current?.click()} className="h-32 w-full flex-col border-dashed bg-field text-foreground">
-                    <span className="grid size-11 place-items-center rounded-full bg-secondary text-primary"><FileUp /></span>
-                    <span className="text-xs font-bold">Upload matches screenshot</span>
-                    <span className="text-[10px] font-normal text-muted-foreground">PNG or JPG screenshot</span>
-                  </Button>
-                ) : (
-                  <div className="relative overflow-hidden rounded-md border border-primary/40">
-                    <img src={preview} alt="Uploaded match screenshot preview" className="max-h-48 w-full object-cover" />
-                    <Button variant="destructive" size="icon" onClick={() => setPreview(null)} aria-label="Remove screenshot" className="absolute right-2 top-2 size-8"><X /></Button>
-                  </div>
-                )}
-                <div className="text-center">
-                  <Button variant="link" onClick={() => setManual((value) => !value)} className="text-xs text-primary">{manual ? "hide manual entry" : "type in match manually →"}</Button>
-                </div>
-                {manual && (
-                  <div className="space-y-3 border-t border-border pt-3">
-                    <div className="grid grid-cols-2 gap-2">
-                      <LabeledInput label="Home team" value={fixture.home} onChange={(value) => setFixture((old) => ({ ...old, home: value }))} placeholder="Barcelona" />
-                      <LabeledInput label="Away team" value={fixture.away} onChange={(value) => setFixture((old) => ({ ...old, away: value }))} placeholder="Liverpool" />
-                    </div>
-                    <Button variant="secondary" onClick={addFixture} className="w-full border border-primary/30 text-primary"><Plus /> Add custom fixture</Button>
-                  </div>
-                )}
-              </section>
+              <MatchCreator admin={admin} notify={setToast} />
             </div>
           )}
 
