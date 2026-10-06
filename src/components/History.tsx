@@ -2,7 +2,8 @@ import { useRef, useState, type ChangeEvent } from "react";
 import { Camera, Check, History as HistoryIcon, Loader2, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { settleBet, type Bet } from "@/lib/bets";
+import { Input } from "@/components/ui/input";
+import { cleanScores, fixturesOf, matchScores, settleWithScores, MISMATCH_ERROR, type Bet, type FixtureScore } from "@/lib/bets";
 import { scanResults } from "@/lib/scan.functions";
 
 export function History({ bets, onSettle, notify }: { bets: Bet[]; onSettle: (b: Bet) => void; notify: (m: string) => void }) {
@@ -34,6 +35,16 @@ function BetCard({ bet, onSettle, notify }: { bet: Bet; onSettle: (b: Bet) => vo
   const ref = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [review, setReview] = useState<{ image: string; fixtures: FixtureScore[]; note: string } | null>(null);
+
+  const finish = (fixtures: FixtureScore[]) => {
+    const out = settleWithScores(bet, fixtures);
+    if ("error" in out) { setError(out.error); return false; }
+    onSettle(out.bet);
+    notify(out.bet.status === "WON" ? "Ticket WON 🎉" : "Ticket settled: LOST");
+    return true;
+  };
+  const blank = () => fixturesOf(bet).map((f) => ({ matchId: f.matchId, home: f.home, away: f.away, homeScore: null, awayScore: null }));
 
   const onFile = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -43,12 +54,13 @@ function BetCard({ bet, onSettle, notify }: { bet: Bet; onSettle: (b: Bet) => vo
     setError("");
     try {
       const image = await new Promise<string>((ok, bad) => { const r = new FileReader(); r.onload = () => ok(r.result as string); r.onerror = bad; r.readAsDataURL(file); });
-      const res = await scanResults({ data: { image } });
-      if (res.error) { setError(res.error); return; }
-      const out = settleBet(bet, res.scores);
-      if ("error" in out) { setError(out.error); return; }
-      onSettle(out.bet);
-      notify(out.bet.status === "WON" ? "Ticket WON 🎉" : "Ticket settled: LOST");
+      try {
+        const res = await scanResults({ data: { image } });
+        if (res.error) { setReview({ image, fixtures: blank(), note: res.error }); return; }
+        const m = matchScores(bet, cleanScores(res.scores));
+        if (m.complete) finish(m.fixtures);
+        else setReview({ image, fixtures: m.fixtures, note: MISMATCH_ERROR + " Please verify or enter the final scores." });
+      } catch { setReview({ image, fixtures: blank(), note: "Scores could not be read automatically. Enter them below." }); }
     } catch { setError("Scan failed, try another image"); } finally { setBusy(false); }
   };
 
@@ -88,6 +100,33 @@ function BetCard({ bet, onSettle, notify }: { bet: Bet; onSettle: (b: Bet) => vo
           <Button disabled={busy} onClick={() => ref.current?.click()} className="h-12 w-full text-[11px] font-black uppercase">
             {busy ? <Loader2 className="animate-spin" /> : <Camera />} {busy ? "Reading scores…" : "Upload match result screenshot"}
           </Button>
+          {review && (
+            <div className="fixed inset-0 z-50 flex items-end justify-center bg-background/80 p-3 backdrop-blur-sm sm:items-center" role="dialog" aria-modal="true" aria-label="Confirm final scores">
+              <div className="glass-panel flex max-h-[90dvh] w-full max-w-md flex-col rounded-lg">
+                <div className="flex items-center justify-between border-b border-border p-3">
+                  <h2 className="font-heading text-2xl font-bold uppercase">Confirm Final Scores</h2>
+                  <Button variant="ghost" size="icon" onClick={() => setReview(null)} aria-label="Close"><X /></Button>
+                </div>
+                <div className="flex-1 space-y-3 overflow-y-auto p-3">
+                  <img src={review.image} alt="Uploaded result screenshot" className="max-h-48 w-full rounded-md border border-border object-contain bg-field" />
+                  <p className="rounded-md border border-warning/50 bg-warning/10 p-2 text-[11px] text-warning">{review.note}</p>
+                  {review.fixtures.map((f, i) => (
+                    <div key={f.matchId} className="grid grid-cols-[1fr_3rem_auto_3rem_1fr] items-center gap-1.5 text-[11px] font-bold">
+                      <span className="truncate text-right">{f.home}</span>
+                      {(["homeScore", "awayScore"] as const).map((k, idx) => (
+                        <Input key={k} type="number" min={0} inputMode="numeric" aria-label={`${idx ? f.away : f.home} goals`} value={f[k] ?? ""} onChange={(e) => { const v = e.target.value === "" ? null : Math.max(0, Math.floor(Number(e.target.value))); setReview((r) => r && { ...r, fixtures: r.fixtures.map((x, j) => (j === i ? { ...x, [k]: v } : x)) }); }} className={`h-9 bg-field px-1 text-center text-sm ${idx ? "order-4" : "order-2"}`} />
+                      ))}
+                      <span className="order-3 text-muted-foreground">-</span>
+                      <span className="order-5 truncate">{f.away}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="border-t border-border p-3">
+                  <Button disabled={review.fixtures.some((f) => f.homeScore == null || f.awayScore == null)} onClick={() => { if (finish(review.fixtures)) setReview(null); }} className="h-12 w-full text-xs font-black uppercase">Confirm & settle</Button>
+                </div>
+              </div>
+            </div>
+          )}
           {error && <p role="alert" className="rounded-md border border-destructive/60 bg-destructive/15 p-2 text-xs text-destructive">{error}</p>}
         </>
       )}
