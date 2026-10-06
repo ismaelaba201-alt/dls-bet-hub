@@ -1,4 +1,5 @@
 import { useRef, useState, type ChangeEvent } from "react";
+import { createPortal } from "react-dom";
 import { Camera, Check, History as HistoryIcon, Loader2, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -100,7 +101,7 @@ function BetCard({ bet, onSettle, notify }: { bet: Bet; onSettle: (b: Bet) => vo
           <Button disabled={busy} onClick={() => ref.current?.click()} className="h-12 w-full text-[11px] font-black uppercase">
             {busy ? <Loader2 className="animate-spin" /> : <Camera />} {busy ? "Reading scores…" : "Upload match result screenshot"}
           </Button>
-          {review && (
+          {review && createPortal(
             <div className="fixed inset-0 z-50 flex items-end justify-center bg-background/80 p-3 backdrop-blur-sm sm:items-center" role="dialog" aria-modal="true" aria-label="Confirm final scores">
               <div className="glass-panel flex max-h-[90dvh] w-full max-w-md flex-col overflow-hidden rounded-lg">
                 <div className="flex shrink-0 items-center justify-between border-b border-border p-3">
@@ -127,7 +128,8 @@ function BetCard({ bet, onSettle, notify }: { bet: Bet; onSettle: (b: Bet) => vo
                   <Button disabled={review.fixtures.some((f) => f.homeScore == null || f.awayScore == null)} onClick={() => { if (finish(review.fixtures)) setReview(null); }} className="h-12 w-full text-xs font-black uppercase">Confirm & settle</Button>
                 </div>
               </div>
-            </div>
+            </div>,
+            document.body,
           )}
           {error && <p role="alert" className="rounded-md border border-destructive/60 bg-destructive/15 p-2 text-xs text-destructive">{error}</p>}
         </>
