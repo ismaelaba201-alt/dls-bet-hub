@@ -4,9 +4,10 @@ import { Banknote, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { MatchOdds } from "@/lib/odds";
+import type { Bet } from "@/lib/bets";
 import { STAKE_MAX, STAKE_MIN, payout, slipLines, stakeError, togglePick, totalOdds, type Slip } from "@/lib/slip";
 
-export function BetSlip({ matches, slip, setSlip, notify, onBrowse }: { matches: MatchOdds[]; slip: Slip; setSlip: (s: Slip) => void; notify: (m: string) => void; onBrowse: () => void }) {
+export function BetSlip({ matches, slip, setSlip, onPlace, onBrowse }: { matches: MatchOdds[]; slip: Slip; setSlip: (s: Slip) => void; onPlace: (b: Bet) => void; onBrowse: () => void }) {
   const [stakeText, setStakeText] = useState("10");
   const lines = slipLines(slip, matches);
   const odds = totalOdds(lines.map((l) => l.selection.odds));
@@ -48,7 +49,13 @@ export function BetSlip({ matches, slip, setSlip, notify, onBrowse }: { matches:
         </label>
         {error && <p className="text-xs text-destructive">{error}</p>}
         <div className="flex justify-between border-t border-border pt-3 text-sm"><span>Potential payout</span><span className="font-mono font-black text-primary">₦{error ? "0.00" : payout(odds, stake).toFixed(2)}</span></div>
-        <Button disabled={!!error} onClick={() => notify(`Bet placed: ₦${stake} @ ${odds.toFixed(3)}`)} className="h-12 w-full text-xs font-black uppercase">Place bet</Button>
+        <Button disabled={!!error} onClick={() => {
+          if (error) return;
+          onPlace({
+            id: Date.now().toString(36).toUpperCase(), placedAt: Date.now(), status: "PENDING", totalOdds: odds, stake, payout: payout(odds, stake),
+            legs: lines.map(({ match, selection }) => ({ matchId: match.id, home: match.home, away: match.away, time: match.time, market: selection.market, key: selection.key, label: selection.label, odds: selection.odds })),
+          });
+        }} className="h-12 w-full text-xs font-black uppercase">Place bet</Button>
       </div>
     </section>
   );

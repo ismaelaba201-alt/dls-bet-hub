@@ -21,6 +21,8 @@ import {
 
 import { MatchCreator } from "@/components/MatchCreator";
 import { BetSlip } from "@/components/BetSlip";
+import { History as HistoryView } from "@/components/History";
+import type { Bet } from "@/lib/bets";
 import type { MatchOdds } from "@/lib/odds";
 import { slipLines, type Slip } from "@/lib/slip";
 import stadiumPitch from "@/assets/stadium-pitch.jpg";
@@ -68,6 +70,13 @@ function Index() {
   const [hubView, setHubView] = useState<HubView>("landing");
   const [matches, setMatches] = useState<MatchOdds[]>([]);
   const [slip, setSlip] = useState<Slip>({});
+  const [bets, setBets] = useState<Bet[]>([]);
+  const [betsLoaded, setBetsLoaded] = useState(false);
+  useEffect(() => {
+    try { setBets(JSON.parse(localStorage.getItem("dls-bets") ?? "[]")); } catch {}
+    setBetsLoaded(true);
+  }, []);
+  useEffect(() => { if (betsLoaded) localStorage.setItem("dls-bets", JSON.stringify(bets)); }, [bets, betsLoaded]);
   const slipCount = slipLines(slip, matches).length;
   const [fixture, setFixture] = useState({ home: "", away: "" });
   const inputRef = useRef<HTMLInputElement>(null);
@@ -188,9 +197,11 @@ function Index() {
 
           {tab === "dlshub" && <Hub view={hubView} setView={setHubView} admin={admin} notify={setToast} />}
 
-          {tab === "betslip" && <BetSlip matches={matches} slip={slip} setSlip={setSlip} notify={setToast} onBrowse={() => setTab("matchday")} />}
+          {tab === "betslip" && <BetSlip matches={matches} slip={slip} setSlip={setSlip} onPlace={(b) => { setBets((old) => [b, ...old]); setSlip({}); setTab("history"); setToast("Bet placed — pending result"); }} onBrowse={() => setTab("matchday")} />}
 
-          {tab !== "matchday" && tab !== "dlshub" && tab !== "betslip" && (
+          {tab === "history" && <HistoryView bets={bets} notify={setToast} onSettle={(b) => setBets((old) => old.map((x) => (x.id === b.id ? b : x)))} />}
+
+          {tab !== "matchday" && tab !== "dlshub" && tab !== "betslip" && tab !== "history" && (
             <section className="glass-panel mt-20 flex min-h-72 flex-col items-center justify-center rounded-lg px-8 text-center">
               <Sparkles className="mb-4 text-primary" size={38} />
               <h2 className="font-heading text-3xl font-bold uppercase">{placeholderCopy[tab][0]}</h2>
