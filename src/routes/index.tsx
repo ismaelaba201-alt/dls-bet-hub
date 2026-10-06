@@ -55,11 +55,6 @@ const tabs: Array<{ id: Tab; label: string; icon: typeof Trophy }> = [
   { id: "history", label: "History", icon: History },
 ];
 
-const placeholderCopy = {
-  betslip: ["Bet Slip", "Selected match picks and active betting slips will appear here."],
-  gamecode: ["Game Codes", "Saved game codes from your matchdays will appear here."],
-  history: ["Match History", "Your completed matchdays and results will appear here."],
-} as const;
 
 function Index() {
   const [tab, setTab] = useState<Tab>("matchday");
@@ -205,13 +200,6 @@ function Index() {
 
           {tab === "gamecode" && <GameCodeLoader onLoaded={(code, m) => { setGameCode(code); setMatches(m); setSlip({}); setTab("matchday"); setToast(`${m.length} matches loaded`); }} />}
 
-          {false && (
-            <section className="glass-panel mt-20 flex min-h-72 flex-col items-center justify-center rounded-lg px-8 text-center">
-              <Sparkles className="mb-4 text-primary" size={38} />
-              <h2 className="font-heading text-3xl font-bold uppercase">{placeholderCopy[tab][0]}</h2>
-              <p className="mt-2 text-xs leading-5 text-muted-foreground">{placeholderCopy[tab][1]}</p>
-            </section>
-          )}
         </main>
       </div>
 
