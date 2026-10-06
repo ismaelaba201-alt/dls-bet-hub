@@ -1,18 +1,21 @@
 import { useRef, useState, type ChangeEvent } from "react";
 import { createPortal } from "react-dom";
-import { Camera, Check, History as HistoryIcon, Loader2, X } from "lucide-react";
+import { Camera, Check, Copy, History as HistoryIcon, Loader2, Search, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cleanScores, fixturesOf, matchScores, settleWithScores, MISMATCH_ERROR, type Bet, type FixtureScore } from "@/lib/bets";
 import { scanResults } from "@/lib/scan.functions";
+import { getResults } from "@/lib/games.functions";
+import { SubmitResults } from "@/components/SubmitResults";
 
-export function History({ bets, onSettle, notify }: { bets: Bet[]; onSettle: (b: Bet) => void; notify: (m: string) => void }) {
+export function History({ bets, onSettle, notify, admin }: { bets: Bet[]; onSettle: (b: Bet) => void; notify: (m: string) => void; admin: boolean }) {
   const [view, setView] = useState<"pending" | "settled">("pending");
   const list = bets.filter((b) => (view === "pending" ? b.status === "PENDING" : b.status !== "PENDING")).sort((a, b) => b.placedAt - a.placedAt);
 
   return (
     <section className="space-y-3">
+      {admin && <SubmitResults notify={notify} />}
       <h2 className="px-1 font-heading text-2xl font-bold uppercase">Bet History</h2>
       <div className="grid grid-cols-2 gap-1 rounded-md border border-border bg-field p-1">
         {(["pending", "settled"] as const).map((v) => (
@@ -65,15 +68,40 @@ function BetCard({ bet, onSettle, notify }: { bet: Bet; onSettle: (b: Bet) => vo
     } catch { setError("Scan failed, try another image"); } finally { setBusy(false); }
   };
 
+  const [checking, setChecking] = useState(false);
+  const checkResults = async () => {
+    if (!bet.gameCode) return;
+    setChecking(true); setError("");
+    try {
+      const r = await getResults({ data: { code: bet.gameCode } });
+      if (!r.available) { notify("Result Not Available. The match outcome has not been published by Admin yet."); return; }
+      const out = settleWithScores(bet, r.fixtures);
+      if ("error" in out) { setError("Official results don't cover every match on this ticket."); return; }
+      onSettle({ ...out.bet, resultImage: r.image });
+      notify(out.bet.status === "WON" ? "Ticket WON 🎉" : "Ticket settled: LOST");
+    } catch { setError("Could not check results, try again"); } finally { setChecking(false); }
+  };
+  const copyBetCode = () => { navigator.clipboard?.writeText(bet.betCode!).catch(() => {}); notify("Bet code copied"); };
+
   const badge = bet.status === "PENDING" ? "bg-warning text-background" : bet.status === "WON" ? "bg-success text-success-foreground" : "bg-destructive text-destructive-foreground";
   const border = bet.status === "WON" ? "border-success/60" : bet.status === "LOST" ? "border-destructive/60" : "";
 
   return (
     <article className={`glass-panel space-y-3 rounded-lg p-3 ${border}`}>
+      {bet.betCode && (
+        <div className="flex items-center justify-between gap-2 rounded-md border border-primary/40 bg-primary/10 p-2">
+          <div>
+            <p className="text-[9px] font-bold uppercase text-muted-foreground">Bet code</p>
+            <p className="font-mono text-xl font-black tracking-widest text-primary">{bet.betCode}</p>
+          </div>
+          <Button size="sm" onClick={copyBetCode} className="text-[10px] font-black uppercase"><Copy /> Copy bet code</Button>
+        </div>
+      )}
       <div className="flex items-start justify-between gap-2">
         <div>
           <p className="font-mono text-xs font-bold">#{bet.id}</p>
           <p className="text-[10px] text-muted-foreground">{new Date(bet.placedAt).toLocaleString()}</p>
+          {bet.gameCode && <p className="text-[10px] text-muted-foreground">Game: <span className="font-mono text-foreground">{bet.gameCode}</span></p>}
         </div>
         <span className={`rounded-sm px-2 py-1 text-[9px] font-black ${badge}`}>{bet.status === "PENDING" ? "PENDING RESULT" : bet.status}</span>
       </div>
@@ -95,7 +123,14 @@ function BetCard({ bet, onSettle, notify }: { bet: Bet; onSettle: (b: Bet) => vo
         <div><p className="text-muted-foreground">Stake</p><p className="font-mono text-xs font-black">₦{bet.stake}</p></div>
         <div><p className="text-muted-foreground">{bet.status === "WON" ? "Won" : "Potential"}</p><p className={`font-mono text-xs font-black ${bet.status === "LOST" ? "text-muted-foreground line-through" : "text-primary"}`}>₦{bet.payout.toFixed(2)}</p></div>
       </div>
-      {bet.status === "PENDING" && (
+      {bet.resultImage && <img src={bet.resultImage} alt="Official match result screenshot" className="max-h-64 w-full rounded-md border border-border bg-field object-contain" />}
+      {bet.status === "PENDING" && bet.gameCode && (
+        <>
+          <Button disabled={checking} onClick={checkResults} className="h-12 w-full text-[11px] font-black uppercase">{checking ? <Loader2 className="animate-spin" /> : <Search />} Check game results</Button>
+          {error && <p role="alert" className="rounded-md border border-destructive/60 bg-destructive/15 p-2 text-xs text-destructive">{error}</p>}
+        </>
+      )}
+      {bet.status === "PENDING" && !bet.gameCode && (
         <>
           <input ref={ref} type="file" accept="image/png,image/jpeg" onChange={onFile} className="hidden" />
           <Button disabled={busy} onClick={() => ref.current?.click()} className="h-12 w-full text-[11px] font-black uppercase">
