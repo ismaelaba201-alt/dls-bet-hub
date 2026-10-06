@@ -1,20 +1,20 @@
 import { useRef, useState, type ChangeEvent } from "react";
+import type React from "react";
 import { ChevronDown, Copy, FileUp, Loader2, Plus, ScanLine, Trash2, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { clampOdds, generateOdds, type Fixture, type Market, type MatchOdds } from "@/lib/odds";
 import { scanFixtures } from "@/lib/scan.functions";
+import { isLocked, isPicked, togglePick, type Slip } from "@/lib/slip";
 
 const MARKETS: Market[] = ["1X2", "Double Chance", "Over/Under"];
 
-export function MatchCreator({ admin, notify }: { admin: boolean; notify: (m: string) => void }) {
+export function MatchCreator({ admin, notify, matches, setMatches, slip, setSlip }: { admin: boolean; notify: (m: string) => void; matches: MatchOdds[]; setMatches: React.Dispatch<React.SetStateAction<MatchOdds[]>>; slip: Slip; setSlip: React.Dispatch<React.SetStateAction<Slip>> }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [scanning, setScanning] = useState(false);
   const [draft, setDraft] = useState<Fixture[] | null>(null);
-  const [matches, setMatches] = useState<MatchOdds[]>([]);
   const [open, setOpen] = useState<string | null>(null);
-  const [slip, setSlip] = useState<Record<string, string>>({});
   const [code, setCode] = useState("");
 
   const onFile = async (e: ChangeEvent<HTMLInputElement>) => {
@@ -51,9 +51,6 @@ export function MatchCreator({ admin, notify }: { admin: boolean; notify: (m: st
     notify("Game code published & copied");
   };
 
-  const picks = Object.keys(slip).length;
-  const total = matches.reduce((acc, m) => { const s = m.selections.find((x) => x.key === slip[m.id]); return s ? acc * s.odds : acc; }, 1);
-
   return (
     <>
       <section className="glass-panel space-y-3 rounded-lg p-4">
@@ -81,7 +78,7 @@ export function MatchCreator({ admin, notify }: { admin: boolean; notify: (m: st
                   <p className="truncate text-xs font-bold">{m.home} <span className="text-primary">vs</span> {m.away}</p>
                   {m.time && <p className="text-[10px] text-muted-foreground">{m.time}</p>}
                 </div>
-                {slip[m.id] && <span className="rounded-sm bg-primary px-1.5 py-0.5 text-[9px] font-black text-primary-foreground">{slip[m.id]}</span>}
+                {slip[m.id] && <span className="rounded-sm bg-primary px-1.5 py-0.5 text-[9px] font-black text-primary-foreground">{[slip[m.id]!.result, slip[m.id]!.goals].filter(Boolean).join(" + ")}</span>}
                 <ChevronDown size={16} className={`transition-transform ${open === m.id ? "rotate-180" : ""}`} />
               </button>
               {open === m.id && (
@@ -91,14 +88,15 @@ export function MatchCreator({ admin, notify }: { admin: boolean; notify: (m: st
                       <p className="mb-1.5 text-[9px] font-bold uppercase text-muted-foreground">{mk}</p>
                       <div className={`grid gap-1.5 ${mk === "Over/Under" ? "grid-cols-2" : "grid-cols-3"}`}>
                         {m.selections.filter((s) => s.market === mk).map((s) => {
-                          const on = slip[m.id] === s.key;
+                          const on = isPicked(slip[m.id], s);
+                          const locked = isLocked(slip[m.id], s);
                           return admin ? (
                             <label key={s.key} className="flex items-center gap-1 rounded-md border border-border bg-field px-2 py-1 text-[10px]">
                               <span className="w-12 shrink-0 text-muted-foreground">{s.label}</span>
                               <Input type="number" step="0.001" min={1.003} max={1.5} value={s.odds} onChange={(e) => editOdds(m.id, s.key, e.target.value)} onBlur={() => fixOdds(m.id)} className="h-7 bg-transparent px-1 text-xs" />
                             </label>
                           ) : (
-                            <Button key={s.key} variant={on ? "default" : "secondary"} onClick={() => setSlip((o) => { const n = { ...o }; if (on) delete n[m.id]; else n[m.id] = s.key; return n; })} className="h-11 flex-col gap-0 text-[10px]">
+                            <Button key={s.key} variant={on ? "default" : "secondary"} disabled={locked} aria-pressed={on} onClick={() => setSlip((o) => togglePick(o, m.id, s))} className="h-11 flex-col gap-0 text-[10px] disabled:opacity-30">
                               <span className={on ? "" : "text-muted-foreground"}>{s.label}</span>
                               <span className="font-mono text-xs font-black">{s.odds.toFixed(3)}</span>
                             </Button>
@@ -113,12 +111,6 @@ export function MatchCreator({ admin, notify }: { admin: boolean; notify: (m: st
             </article>
           ))}
 
-          {picks > 0 && !admin && (
-            <div className="glass-panel flex items-center justify-between rounded-lg p-3 text-xs">
-              <span>{picks} pick{picks > 1 ? "s" : ""} on slip</span>
-              <span className="font-mono font-black text-warning">Total odds {total.toFixed(3)}</span>
-            </div>
-          )}
           {admin && <Button onClick={publish} className="h-12 w-full text-xs font-black uppercase">Publish game code</Button>}
           {code && (
             <Button variant="secondary" onClick={() => { navigator.clipboard?.writeText(code).catch(() => {}); notify("Game code copied"); }} className="h-11 w-full border border-primary/40 font-mono text-primary"><Copy /> {code}</Button>
