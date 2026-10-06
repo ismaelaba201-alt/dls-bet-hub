@@ -19,6 +19,7 @@ import {
   X,
 } from "lucide-react";
 
+import { MatchCreator } from "@/components/MatchCreator";
 import stadiumPitch from "@/assets/stadium-pitch.jpg";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

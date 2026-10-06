@@ -9,7 +9,7 @@ export const scanFixtures = createServerFn({ method: "POST" })
     return d;
   })
   .handler(async ({ data }): Promise<Out> => {
-    const key = process.env.LOVABLE_API_KEY;
+    const key = process.env["LOVABLE_API_KEY"];
     if (!key) return { fixtures: [], error: "Scanner is not configured." };
     const res = await fetch("https://ai.gateway.lovable.dev/v1/responses", {
       method: "POST",

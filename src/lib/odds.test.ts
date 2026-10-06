@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { clampOdds, generateOdds } from "./odds";
 
-const pairs = [["Man City", "Liverpool"], ["Real Madrid", "Ajax"], ["Fooville", "Bartown"], ["Sevilla", "Bayern Munich"]];
+const pairs: Array<[string, string]> = [["Man City", "Liverpool"], ["Real Madrid", "Ajax"], ["Fooville", "Bartown"], ["Sevilla", "Bayern Munich"]];
 
 describe("odds engine", () => {
   it("keeps every selection between 1.003 and 1.500", () => {

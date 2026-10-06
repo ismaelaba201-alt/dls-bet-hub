@@ -35,7 +35,7 @@ export function MatchCreator({ admin, notify }: { admin: boolean; notify: (m: st
     if (!valid.length) return notify("Add at least one full fixture");
     const generated = valid.map((f, i) => generateOdds(f, `${Date.now()}-${i}`));
     setMatches((old) => [...old, ...generated]);
-    setOpen(generated[0].id);
+    setOpen(generated[0]!.id);
     setDraft(null);
     setCode("");
     notify(`${generated.length} matches priced`);
@@ -45,7 +45,7 @@ export function MatchCreator({ admin, notify }: { admin: boolean; notify: (m: st
   const fixOdds = (id: string) => setMatches((ms) => ms.map((m) => m.id !== id ? m : { ...m, selections: m.selections.map((s) => ({ ...s, odds: clampOdds(s.odds) })) }));
 
   const publish = () => {
-    const c = `DLS-${matches.length}${matches.map((m) => m.home[0] + m.away[0]).join("").toUpperCase().slice(0, 6)}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+    const c = `DLS-${matches.length}${matches.map((m) => (m.home[0] ?? "") + (m.away[0] ?? "")).join("").toUpperCase().slice(0, 6)}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
     setCode(c);
     navigator.clipboard?.writeText(c).catch(() => {});
     notify("Game code published & copied");
