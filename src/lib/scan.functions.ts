@@ -42,14 +42,14 @@ async function readImage<T>(image: string, prompt: string, itemProps: Record<str
 
 export const scanFixtures = createServerFn({ method: "POST" })
   .inputValidator(validate)
-  .handler(async ({ data }): Promise<{ fixtures: Fx[]; error?: string }> => {
+  .handler(async ({ data }): Promise<{ fixtures: Fx[]; error?: string | undefined }> => {
     const r = await readImage<Fx>(data.image, "Read this football matchday schedule screenshot. Extract every fixture: home team, away team, and match time/date exactly as shown (empty string if absent). Use full club names.", { home: { type: "string" }, away: { type: "string" }, time: { type: "string" } });
     return { fixtures: r.items, error: r.error };
   });
 
 export const scanResults = createServerFn({ method: "POST" })
   .inputValidator(validate)
-  .handler(async ({ data }): Promise<{ scores: Score[]; error?: string }> => {
+  .handler(async ({ data }): Promise<{ scores: Score[]; error?: string | undefined }> => {
     const r = await readImage<Score>(data.image, "Read this screenshot of completed football matches. Extract every finished match: home team, away team, and the final full-time goals for each. Use full club names. Return an empty list if no final scores are visible.", { home: { type: "string" }, away: { type: "string" }, homeScore: { type: "integer" }, awayScore: { type: "integer" } });
     return { scores: r.items, error: r.error };
   });
