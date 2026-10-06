@@ -102,13 +102,15 @@ function BetCard({ bet, onSettle, notify }: { bet: Bet; onSettle: (b: Bet) => vo
           </Button>
           {review && (
             <div className="fixed inset-0 z-50 flex items-end justify-center bg-background/80 p-3 backdrop-blur-sm sm:items-center" role="dialog" aria-modal="true" aria-label="Confirm final scores">
-              <div className="glass-panel flex max-h-[90dvh] w-full max-w-md flex-col rounded-lg">
-                <div className="flex items-center justify-between border-b border-border p-3">
+              <div className="glass-panel flex max-h-[90dvh] w-full max-w-md flex-col overflow-hidden rounded-lg">
+                <div className="flex shrink-0 items-center justify-between border-b border-border p-3">
                   <h2 className="font-heading text-2xl font-bold uppercase">Confirm Final Scores</h2>
                   <Button variant="ghost" size="icon" onClick={() => setReview(null)} aria-label="Close"><X /></Button>
                 </div>
-                <div className="flex-1 space-y-3 overflow-y-auto p-3">
-                  <img src={review.image} alt="Uploaded result screenshot" className="max-h-48 w-full rounded-md border border-border object-contain bg-field" />
+                <div className="shrink-0 border-b border-border p-3">
+                  <img src={review.image} alt="Uploaded result screenshot" className="h-[min(28dvh,16rem)] w-full rounded-md border border-border object-contain bg-field" />
+                </div>
+                <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain p-3" role="region" aria-label="Editable final scores" tabIndex={0}>
                   <p className="rounded-md border border-warning/50 bg-warning/10 p-2 text-[11px] text-warning">{review.note}</p>
                   {review.fixtures.map((f, i) => (
                     <div key={f.matchId} className="grid grid-cols-[1fr_3rem_auto_3rem_1fr] items-center gap-1.5 text-[11px] font-bold">
@@ -121,7 +123,7 @@ function BetCard({ bet, onSettle, notify }: { bet: Bet; onSettle: (b: Bet) => vo
                     </div>
                   ))}
                 </div>
-                <div className="border-t border-border p-3">
+                <div className="shrink-0 border-t border-border p-3">
                   <Button disabled={review.fixtures.some((f) => f.homeScore == null || f.awayScore == null)} onClick={() => { if (finish(review.fixtures)) setReview(null); }} className="h-12 w-full text-xs font-black uppercase">Confirm & settle</Button>
                 </div>
               </div>
