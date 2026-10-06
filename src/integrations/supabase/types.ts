@@ -14,7 +14,62 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      bet_codes: {
+        Row: {
+          code: string
+          created_at: string
+          game_code: string
+          legs: Json
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          game_code: string
+          legs: Json
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          game_code?: string
+          legs?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bet_codes_game_code_fkey"
+            columns: ["game_code"]
+            isOneToOne: false
+            referencedRelation: "game_codes"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
+      game_codes: {
+        Row: {
+          code: string
+          created_at: string
+          matches: Json
+          result_image: string | null
+          results: Json | null
+          results_at: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          matches: Json
+          result_image?: string | null
+          results?: Json | null
+          results_at?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          matches?: Json
+          result_image?: string | null
+          results?: Json | null
+          results_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
