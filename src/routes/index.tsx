@@ -9,7 +9,7 @@ import {
   Gamepad2,
   History,
   KeyRound,
-  Money,
+  Banknote,
   Plus,
   Settings2,
   Shirt,
@@ -42,7 +42,7 @@ type HubView = "landing" | "apk" | "kits";
 
 const tabs: Array<{ id: Tab; label: string; icon: typeof Trophy }> = [
   { id: "matchday", label: "Matchday", icon: Trophy },
-  { id: "betslip", label: "Bet Slip", icon: Money },
+  { id: "betslip", label: "Bet Slip", icon: Banknote },
   { id: "gamecode", label: "Game Code", icon: KeyRound },
   { id: "dlshub", label: "DLS Kits", icon: Shirt },
   { id: "history", label: "History", icon: History },
