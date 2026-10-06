@@ -41,7 +41,6 @@ describe("bet slip rules", () => {
 });
 
 import { slipFromLegs } from "./slip";
-import { generateOdds } from "./odds";
 describe("slipFromLegs", () => {
   it("rebuilds the exact shared picks", () => {
     const m = generateOdds({ home: "Arsenal", away: "Chelsea", time: "" }, "m1");
