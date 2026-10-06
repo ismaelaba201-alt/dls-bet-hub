@@ -48,3 +48,12 @@ describe("settlement", () => {
     expect("bet" in r && r.bet.status).toBe("WON");
   });
 });
+
+import { matchFixtureList } from "./bets";
+describe("matchFixtureList", () => {
+  it("maps official OCR scores to game fixtures, leaving unknown blank", () => {
+    const out = matchFixtureList([{ id: "a", home: "Bayern Munich", away: "Inter" }, { id: "b", home: "Ajax", away: "Porto" }], [{ home: "Bayern Múnich", away: "Inter", homeScore: 2, awayScore: 1 }]);
+    expect(out[0]).toMatchObject({ matchId: "a", homeScore: 2, awayScore: 1 });
+    expect(out[1]).toMatchObject({ matchId: "b", homeScore: null, awayScore: null });
+  });
+});
