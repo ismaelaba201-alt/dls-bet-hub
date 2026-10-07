@@ -11,3 +11,4 @@
 
 - Keep the product as a mobile-first, single-route interactive simulator because its five destinations are app tabs rather than shareable content pages.
 - Portal the result score-confirmation dialog to the document body because glass-panel backdrop filters otherwise trap fixed overlays beneath navigation.
+- Enforce game code betting deadlines on the server when creating bet codes, because client-side lockouts alone can be bypassed.

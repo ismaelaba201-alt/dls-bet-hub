@@ -3,10 +3,10 @@ import { KeyRound, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { loadGame } from "@/lib/games.functions";
+import { EXPIRED, loadGame } from "@/lib/games.functions";
 import type { MatchOdds } from "@/lib/odds";
 
-export function GameCodeLoader({ onLoaded }: { onLoaded: (code: string, matches: MatchOdds[]) => void }) {
+export function GameCodeLoader({ onLoaded }: { onLoaded: (code: string, matches: MatchOdds[], closesAt: string | null) => void }) {
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -16,7 +16,9 @@ export function GameCodeLoader({ onLoaded }: { onLoaded: (code: string, matches:
     const r = await loadGame({ data: { code } }).catch(() => ({ error: "Could not load matches.", matches: [] }));
     setBusy(false);
     if ("error" in r && r.error) { setErr(r.error); return; }
-    onLoaded((r as { code: string }).code, r.matches);
+    const g = r as { code: string; matches: MatchOdds[]; closesAt: string | null };
+    if (g.closesAt && Date.parse(g.closesAt) <= Date.now()) setErr(EXPIRED);
+    onLoaded(g.code, g.matches, g.closesAt);
   };
   return (
     <section className="glass-panel mt-16 flex flex-col items-center gap-4 rounded-lg px-6 py-10 text-center">

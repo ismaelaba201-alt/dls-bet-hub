@@ -45,24 +45,30 @@ export type Database = {
       }
       game_codes: {
         Row: {
+          closes_at: string | null
           code: string
           created_at: string
+          featured_match_id: string | null
           matches: Json
           result_image: string | null
           results: Json | null
           results_at: string | null
         }
         Insert: {
+          closes_at?: string | null
           code: string
           created_at?: string
+          featured_match_id?: string | null
           matches: Json
           result_image?: string | null
           results?: Json | null
           results_at?: string | null
         }
         Update: {
+          closes_at?: string | null
           code?: string
           created_at?: string
+          featured_match_id?: string | null
           matches?: Json
           result_image?: string | null
           results?: Json | null

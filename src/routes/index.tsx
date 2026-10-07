@@ -23,6 +23,9 @@ import { MatchCreator } from "@/components/MatchCreator";
 import { BetSlip } from "@/components/BetSlip";
 import { History as HistoryView } from "@/components/History";
 import { GameCodeLoader } from "@/components/GameCodeLoader";
+import { FeaturedCarousel } from "@/components/FeaturedCarousel";
+import { EXPIRED, loadGame } from "@/lib/games.functions";
+import { isExpired } from "@/lib/teams";
 import type { Bet } from "@/lib/bets";
 import type { MatchOdds } from "@/lib/odds";
 import { slipLines, type Slip } from "@/lib/slip";
@@ -67,6 +70,7 @@ function Index() {
   const [matches, setMatches] = useState<MatchOdds[]>([]);
   const [slip, setSlip] = useState<Slip>({});
   const [gameCode, setGameCode] = useState<string | null>(null);
+  const [closesAt, setClosesAt] = useState<string | null>(null);
   const [bets, setBets] = useState<Bet[]>([]);
   const [betsLoaded, setBetsLoaded] = useState(false);
   useEffect(() => {
@@ -89,7 +93,24 @@ function Index() {
     return () => window.clearTimeout(timer);
   }, [toast]);
 
-  const time = new Date(seconds * 1000).toISOString().slice(11, 19);
+  void seconds; // ticking state re-renders countdowns every second
+  const now = Date.now();
+  const expired = isExpired(closesAt, now);
+
+  const applyGame = (code: string, m: MatchOdds[], closes: string | null | undefined, s: Slip = {}) => {
+    setGameCode(code); setMatches(m); setClosesAt(closes ?? null);
+    const locked = isExpired(closes);
+    setSlip(locked ? {} : s);
+    return locked;
+  };
+  const loadGameCode = async (code: string) => {
+    const r = await loadGame({ data: { code } }).catch(() => ({ error: "Could not load matches.", matches: [] }));
+    if ("error" in r && r.error) { setToast(r.error); return; }
+    const g = r as { code: string; matches: MatchOdds[]; closesAt: string | null };
+    const locked = applyGame(g.code, g.matches, g.closesAt);
+    setTab("matchday");
+    setToast(locked ? "Betting is closed for this code" : `${g.matches.length} matches loaded`);
+  };
 
   const copyCode = async (code: string) => {
     try {
@@ -157,48 +178,26 @@ function Index() {
                 </div>
               </section>
 
-              <section className="glass-panel space-y-3 rounded-lg p-4">
-                <div className="flex items-start gap-2">
-                  <Trophy className="mt-0.5 text-warning" size={16} />
-                  <h2 className="text-xs font-bold uppercase leading-5 text-muted-foreground">Featured match: <span className="text-foreground">Real Madrid vs Chelsea</span></h2>
-                </div>
+              <FeaturedCarousel now={now} refreshKey={gameCode} onCopy={copyCode} onLoad={loadGameCode} />
 
-                <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 py-1">
-                  <TeamBadge initials="RM" name="Real Madrid" tone="light" />
-                  <div className="flex flex-col items-center">
-                    <span className="font-heading text-4xl font-bold italic leading-none text-primary">VS</span>
-                    <span className="mt-1 rounded-full border border-border bg-secondary px-2 py-0.5 text-[9px] font-extrabold text-muted-foreground">+8 MATCHES</span>
-                  </div>
-                  <TeamBadge initials="CFC" name="Chelsea" tone="blue" />
-                </div>
+              <div className="flex h-9 items-center justify-center gap-2 overflow-hidden rounded-md border border-border bg-secondary/80 px-3 text-center text-[11px]">
+                <span>🔥</span>
+                <p className="truncate text-muted-foreground">Top Winner: <span className="font-bold text-primary">@Alex</span> won <span className="font-bold text-warning">₦15,000</span> on 12.50 Odds</p>
+              </div>
 
-                <div className="flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-field">
-                  <Clock3 size={14} className="text-muted-foreground" />
-                  <span className="text-[11px] font-semibold">CLOSES IN:</span>
-                  <span className="font-mono text-base font-black text-destructive">{time}</span>
-                </div>
+              {expired && <p role="alert" className="rounded-md border border-destructive/60 bg-destructive/15 p-3 text-xs font-bold text-destructive">{EXPIRED}</p>}
 
-                <div className="flex h-9 items-center justify-center gap-2 overflow-hidden rounded-md border border-border bg-secondary/80 px-3 text-center text-[11px]">
-                  <span>🔥</span>
-                  <p className="truncate text-muted-foreground">Top Winner: <span className="font-bold text-primary">@Alex</span> won <span className="font-bold text-warning">₦15,000</span> on 12.50 Odds</p>
-                </div>
-
-                <Button onClick={() => copyCode("RMCH8-GL-24")} className="h-12 w-full rounded-md text-xs font-black uppercase">
-                  <Copy /> Copy game code: RMCH8-GL-24
-                </Button>
-              </section>
-
-              <MatchCreator admin={admin} notify={setToast} matches={matches} setMatches={setMatches} slip={slip} setSlip={setSlip} onPublished={setGameCode} />
+              <MatchCreator admin={admin} notify={setToast} matches={matches} setMatches={setMatches} slip={slip} setSlip={setSlip} onPublished={(c) => { setGameCode(c); setClosesAt(null); }} locked={expired && !admin} />
             </div>
           )}
 
           {tab === "dlshub" && <Hub view={hubView} setView={setHubView} admin={admin} notify={setToast} />}
 
-          {tab === "betslip" && <BetSlip matches={matches} slip={slip} setSlip={setSlip} gameCode={gameCode} notify={setToast} onLoadCode={(g, m, s) => { setGameCode(g); setMatches(m); setSlip(s); setToast("Bet code loaded — enter your stake"); }} onPlace={(b) => { setBets((old) => [b, ...old]); setSlip({}); setTab("history"); setToast("Bet placed — pending result"); }} onBrowse={() => setTab("matchday")} />}
+          {tab === "betslip" && <BetSlip matches={matches} slip={slip} setSlip={setSlip} gameCode={gameCode} expired={expired} notify={setToast} onLoadCode={(g, m, s, c) => { const locked = applyGame(g, m, c, s); setToast(locked ? "Betting is closed for this code" : "Bet code loaded — enter your stake"); }} onPlace={(b) => { setBets((old) => [b, ...old]); setSlip({}); setTab("history"); setToast("Bet placed — pending result"); }} onBrowse={() => setTab("matchday")} />}
 
           {tab === "history" && <HistoryView admin={admin} bets={bets} notify={setToast} onSettle={(b) => setBets((old) => old.map((x) => (x.id === b.id ? b : x)))} />}
 
-          {tab === "gamecode" && <GameCodeLoader onLoaded={(code, m) => { setGameCode(code); setMatches(m); setSlip({}); setTab("matchday"); setToast(`${m.length} matches loaded`); }} />}
+          {tab === "gamecode" && <GameCodeLoader onLoaded={(code, m, c) => { if (!applyGame(code, m, c)) { setTab("matchday"); setToast(`${m.length} matches loaded`); } }} />}
 
         </main>
       </div>
