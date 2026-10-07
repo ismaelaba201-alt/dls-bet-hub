@@ -11,12 +11,20 @@ import { isLocked, isPicked, togglePick, type Slip } from "@/lib/slip";
 
 const MARKETS: Market[] = ["1X2", "Double Chance", "Over/Under"];
 
-export function MatchCreator({ admin, notify, matches, setMatches, slip, setSlip, onPublished }: { admin: boolean; notify: (m: string) => void; matches: MatchOdds[]; setMatches: React.Dispatch<React.SetStateAction<MatchOdds[]>>; slip: Slip; setSlip: React.Dispatch<React.SetStateAction<Slip>>; onPublished?: (code: string) => void }) {
+export function MatchCreator({ admin, notify, matches, setMatches, slip, setSlip, onPublished, locked = false }: { admin: boolean; notify: (m: string) => void; matches: MatchOdds[]; setMatches: React.Dispatch<React.SetStateAction<MatchOdds[]>>; slip: Slip; setSlip: React.Dispatch<React.SetStateAction<Slip>>; onPublished?: (code: string) => void; locked?: boolean }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [scanning, setScanning] = useState(false);
   const [draft, setDraft] = useState<Fixture[] | null>(null);
   const [open, setOpen] = useState<string | null>(null);
   const [code, setCode] = useState("");
+  const [date, setDate] = useState(() => localDate(new Date()));
+  const [deadline, setDeadline] = useState("");
+  const [featured, setFeatured] = useState("");
+  const closesAt = date && deadline ? new Date(`${date}T${deadline}`) : null;
+  const deadlineError = closesAt && closesAt.getTime() <= Date.now() ? "Deadline must be in the future" : "";
+  const featuredId = matches.some((m) => m.id === featured) ? featured : "";
+  const ready = !!closesAt && !deadlineError && !!featuredId;
+  const quick = (mins: number) => { const d = new Date(Date.now() + mins * 60000); setDate(localDate(d)); setDeadline(d.toTimeString().slice(0, 5)); };
 
   const onFile = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -46,13 +54,14 @@ export function MatchCreator({ admin, notify, matches, setMatches, slip, setSlip
   const fixOdds = (id: string) => setMatches((ms) => ms.map((m) => m.id !== id ? m : { ...m, selections: m.selections.map((s) => ({ ...s, odds: clampOdds(s.odds) })) }));
 
   const publish = async () => {
+    if (!ready) return;
     const c = `DLS-${matches.length}${matches.map((m) => (m.home[0] ?? "") + (m.away[0] ?? "")).join("").toUpperCase().slice(0, 6)}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
-    const res = await publishGame({ data: { code: c, matches } }).catch(() => ({ ok: false }));
+    const res = await publishGame({ data: { code: c, matches, closesAt: closesAt!.toISOString(), featuredId } }).catch(() => ({ ok: false }));
     if (!res.ok) { notify("Could not publish game code"); return; }
     setCode(c);
     onPublished?.(c);
     navigator.clipboard?.writeText(c).catch(() => {});
-    notify("Game code published & copied");
+    notify("Game code created & added to the homepage");
   };
 
   return (
@@ -93,14 +102,13 @@ export function MatchCreator({ admin, notify, matches, setMatches, slip, setSlip
                       <div className={`grid gap-1.5 ${mk === "Over/Under" ? "grid-cols-2" : "grid-cols-3"}`}>
                         {m.selections.filter((s) => s.market === mk).map((s) => {
                           const on = isPicked(slip[m.id], s);
-                          const locked = isLocked(slip[m.id], s);
-                          return admin ? (
+                                                    return admin ? (
                             <label key={s.key} className="flex items-center gap-1 rounded-md border border-border bg-field px-2 py-1 text-[10px]">
                               <span className="w-12 shrink-0 text-muted-foreground">{s.label}</span>
                               <Input type="number" step="0.001" min={1.003} max={1.5} value={s.odds} onChange={(e) => editOdds(m.id, s.key, e.target.value)} onBlur={() => fixOdds(m.id)} className="h-7 bg-transparent px-1 text-xs" />
                             </label>
                           ) : (
-                            <Button key={s.key} variant={on ? "default" : "secondary"} disabled={locked} aria-pressed={on} onClick={() => setSlip((o) => togglePick(o, m.id, s))} className="h-11 flex-col gap-0 text-[10px] disabled:opacity-30">
+                            <Button key={s.key} variant={on ? "default" : "secondary"} disabled={isLocked(slip[m.id], s) || locked} aria-pressed={on} onClick={() => setSlip((o) => togglePick(o, m.id, s))} className="h-11 flex-col gap-0 text-[10px] disabled:opacity-30">
                               <span className={on ? "" : "text-muted-foreground"}>{s.label}</span>
                               <span className="font-mono text-xs font-black">{s.odds.toFixed(3)}</span>
                             </Button>
@@ -115,7 +123,31 @@ export function MatchCreator({ admin, notify, matches, setMatches, slip, setSlip
             </article>
           ))}
 
-          {admin && <Button onClick={publish} className="h-12 w-full text-xs font-black uppercase">Publish game code</Button>}
+          {admin && (
+            <div className="glass-panel space-y-3 rounded-lg p-3">
+              <p className="text-[10px] font-bold uppercase text-muted-foreground">Matchday setup</p>
+              <div className="grid grid-cols-2 gap-2">
+                <label className="space-y-1 text-[9px] font-bold uppercase text-muted-foreground">Date
+                  <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="mt-1 h-10 bg-field text-xs text-foreground" />
+                  <span className="block font-normal normal-case">{date ? new Date(`${date}T00:00`).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "Required"}</span>
+                </label>
+                <label className="space-y-1 text-[9px] font-bold uppercase text-muted-foreground">Betting closes at
+                  <Input type="time" value={deadline} onChange={(e) => setDeadline(e.target.value)} aria-invalid={!!deadlineError} className={`mt-1 h-10 bg-field text-xs text-foreground ${deadlineError ? "border-destructive" : ""}`} />
+                </label>
+              </div>
+              <div className="flex gap-1.5">
+                {[["15m", 15], ["30m", 30], ["1h", 60], ["3h", 180]].map(([l, m]) => <Button key={l} type="button" variant="secondary" size="sm" onClick={() => quick(m as number)} className="flex-1 text-[10px]">{l}</Button>)}
+              </div>
+              {deadlineError && <p className="text-xs text-destructive">{deadlineError}</p>}
+              <label className="block space-y-1 text-[9px] font-bold uppercase text-muted-foreground">Featured highlight match
+                <select value={featuredId} onChange={(e) => setFeatured(e.target.value)} className="mt-1 h-10 w-full rounded-md border border-input bg-field px-2 text-xs text-foreground">
+                  <option value="">Select the cover match…</option>
+                  {matches.map((m) => <option key={m.id} value={m.id}>{m.home} vs {m.away}</option>)}
+                </select>
+              </label>
+              <Button disabled={!ready} onClick={publish} className="h-12 w-full text-xs font-black uppercase">Create bet code</Button>
+            </div>
+          )}
           {code && (
             <Button variant="secondary" onClick={() => { navigator.clipboard?.writeText(code).catch(() => {}); notify("Game code copied"); }} className="h-11 w-full border border-primary/40 font-mono text-primary"><Copy /> {code}</Button>
           )}
@@ -149,4 +181,8 @@ export function MatchCreator({ admin, notify, matches, setMatches, slip, setSlip
       )}
     </>
   );
+}
+
+function localDate(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
