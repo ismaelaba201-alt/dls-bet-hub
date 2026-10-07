@@ -23,6 +23,9 @@ import { MatchCreator } from "@/components/MatchCreator";
 import { BetSlip } from "@/components/BetSlip";
 import { History as HistoryView } from "@/components/History";
 import { GameCodeLoader } from "@/components/GameCodeLoader";
+import { FeaturedCarousel } from "@/components/FeaturedCarousel";
+import { EXPIRED, loadGame } from "@/lib/games.functions";
+import { isExpired } from "@/lib/teams";
 import type { Bet } from "@/lib/bets";
 import type { MatchOdds } from "@/lib/odds";
 import { slipLines, type Slip } from "@/lib/slip";
@@ -190,11 +193,11 @@ function Index() {
 
           {tab === "dlshub" && <Hub view={hubView} setView={setHubView} admin={admin} notify={setToast} />}
 
-          {tab === "betslip" && <BetSlip matches={matches} slip={slip} setSlip={setSlip} gameCode={gameCode} notify={setToast} onLoadCode={(g, m, s) => { setGameCode(g); setMatches(m); setSlip(s); setToast("Bet code loaded — enter your stake"); }} onPlace={(b) => { setBets((old) => [b, ...old]); setSlip({}); setTab("history"); setToast("Bet placed — pending result"); }} onBrowse={() => setTab("matchday")} />}
+          {tab === "betslip" && <BetSlip matches={matches} slip={slip} setSlip={setSlip} gameCode={gameCode} expired={expired} notify={setToast} onLoadCode={(g, m, s, c) => { const locked = applyGame(g, m, c, s); setToast(locked ? "Betting is closed for this code" : "Bet code loaded — enter your stake"); }} onPlace={(b) => { setBets((old) => [b, ...old]); setSlip({}); setTab("history"); setToast("Bet placed — pending result"); }} onBrowse={() => setTab("matchday")} />}
 
           {tab === "history" && <HistoryView admin={admin} bets={bets} notify={setToast} onSettle={(b) => setBets((old) => old.map((x) => (x.id === b.id ? b : x)))} />}
 
-          {tab === "gamecode" && <GameCodeLoader onLoaded={(code, m) => { setGameCode(code); setMatches(m); setSlip({}); setTab("matchday"); setToast(`${m.length} matches loaded`); }} />}
+          {tab === "gamecode" && <GameCodeLoader onLoaded={(code, m, c) => { if (!applyGame(code, m, c)) { setTab("matchday"); setToast(`${m.length} matches loaded`); } }} />}
 
         </main>
       </div>

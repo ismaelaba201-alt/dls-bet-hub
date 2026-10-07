@@ -6,16 +6,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { MatchOdds } from "@/lib/odds";
 import type { Bet } from "@/lib/bets";
-import { createBetCode, loadBetCode } from "@/lib/games.functions";
+import { EXPIRED, createBetCode, loadBetCode } from "@/lib/games.functions";
 import { STAKE_MAX, STAKE_MIN, payout, slipFromLegs, slipLines, stakeError, togglePick, totalOdds, type Slip } from "@/lib/slip";
 
 type Props = {
-  matches: MatchOdds[]; slip: Slip; setSlip: (s: Slip) => void; gameCode: string | null;
+  matches: MatchOdds[]; slip: Slip; setSlip: (s: Slip) => void; gameCode: string | null; expired?: boolean;
   onPlace: (b: Bet) => void; onBrowse: () => void; notify: (m: string) => void;
-  onLoadCode: (gameCode: string, matches: MatchOdds[], slip: Slip) => void;
+  onLoadCode: (gameCode: string, matches: MatchOdds[], slip: Slip, closesAt: string | null) => void;
 };
 
-export function BetSlip({ matches, slip, setSlip, gameCode, onPlace, onBrowse, notify, onLoadCode }: Props) {
+export function BetSlip({ matches, slip, setSlip, gameCode, expired = false, onPlace, onBrowse, notify, onLoadCode }: Props) {
   const [stakeText, setStakeText] = useState("10");
   const [placing, setPlacing] = useState(false);
   const [codeOpen, setCodeOpen] = useState(false);
@@ -25,7 +25,7 @@ export function BetSlip({ matches, slip, setSlip, gameCode, onPlace, onBrowse, n
   const error = stakeError(stake);
 
   const place = async () => {
-    if (error || placing) return;
+    if (error || placing || expired) return;
     const legs = lines.map(({ match, selection }) => ({ matchId: match.id, home: match.home, away: match.away, time: match.time, market: selection.market, key: selection.key, label: selection.label, odds: selection.odds }));
     let betCode: string | undefined;
     if (gameCode) {
@@ -44,13 +44,14 @@ export function BetSlip({ matches, slip, setSlip, gameCode, onPlace, onBrowse, n
         <section className="glass-panel mt-20 flex min-h-72 flex-col items-center justify-center rounded-lg px-8 text-center">
           <Banknote className="mb-4 text-primary" size={38} />
           <h2 className="font-heading text-3xl font-bold uppercase">Bet Slip</h2>
+          {expired && <p role="alert" className="mt-2 text-xs font-bold text-destructive">{EXPIRED}</p>}
           <p className="mt-2 text-xs leading-5 text-muted-foreground">Tap odds on the Matchday screen or load a friend's bet code.</p>
           <div className="mt-4 grid w-full gap-2">
             <Button onClick={onBrowse} className="h-11 text-xs font-black uppercase">Go to Matchday</Button>
             <Button variant="secondary" onClick={() => setCodeOpen(true)} className="h-11 border border-primary/40 text-xs font-black uppercase text-primary"><Ticket /> Enter bet code</Button>
           </div>
         </section>
-        {codeOpen && <BetCodeModal onClose={() => setCodeOpen(false)} onLoaded={(g, m, s) => { setCodeOpen(false); onLoadCode(g, m, s); }} />}
+        {codeOpen && <BetCodeModal onClose={() => setCodeOpen(false)} onLoaded={(g, m, s, c) => { setCodeOpen(false); onLoadCode(g, m, s, c); }} />}
       </>
     );
   }
@@ -80,13 +81,14 @@ export function BetSlip({ matches, slip, setSlip, gameCode, onPlace, onBrowse, n
         </label>
         {error && <p className="text-xs text-destructive">{error}</p>}
         <div className="flex justify-between border-t border-border pt-3 text-sm"><span>Potential payout</span><span className="font-mono font-black text-primary">₦{error ? "0.00" : payout(odds, stake).toFixed(2)}</span></div>
-        <Button disabled={!!error || placing} onClick={place} className="h-12 w-full text-xs font-black uppercase">{placing && <Loader2 className="animate-spin" />} Place bet</Button>
+        {expired && <p role="alert" className="rounded-md border border-destructive/60 bg-destructive/15 p-2 text-xs font-bold text-destructive">{EXPIRED}</p>}
+        <Button disabled={!!error || placing || expired} onClick={place} className="h-12 w-full text-xs font-black uppercase">{placing && <Loader2 className="animate-spin" />} Place bet</Button>
       </div>
     </section>
   );
 }
 
-function BetCodeModal({ onClose, onLoaded }: { onClose: () => void; onLoaded: (gameCode: string, matches: MatchOdds[], slip: Slip) => void }) {
+function BetCodeModal({ onClose, onLoaded }: { onClose: () => void; onLoaded: (gameCode: string, matches: MatchOdds[], slip: Slip, closesAt: string | null) => void }) {
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -96,10 +98,10 @@ function BetCodeModal({ onClose, onLoaded }: { onClose: () => void; onLoaded: (g
     const res = await loadBetCode({ data: { code } }).catch(() => ({ error: "Could not load bet code." }));
     setBusy(false);
     if ("error" in res && res.error) { setErr(res.error); return; }
-    const r = res as { gameCode: string; legs: { matchId: string; key: string }[]; matches: MatchOdds[] };
+    const r = res as { gameCode: string; legs: { matchId: string; key: string }[]; matches: MatchOdds[]; closesAt: string | null };
     const slip = slipFromLegs(r.legs, r.matches);
     if (!Object.keys(slip).length) { setErr("This bet code has no valid selections."); return; }
-    onLoaded(r.gameCode, r.matches, slip);
+    onLoaded(r.gameCode, r.matches, slip, r.closesAt);
   };
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-background/80 p-3 backdrop-blur-sm sm:items-center" role="dialog" aria-modal="true" aria-label="Enter bet code">
