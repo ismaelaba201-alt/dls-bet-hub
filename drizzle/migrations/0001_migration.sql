@@ -1,0 +1,1 @@
+ALTER TABLE public.game_codes ADD COLUMN closes_at timestamptz, ADD COLUMN featured_match_id text;
