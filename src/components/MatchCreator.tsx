@@ -1,11 +1,11 @@
-import { useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { publishGame } from "@/lib/games.functions";
 import type React from "react";
-import { ChevronDown, Copy, FileUp, Loader2, Plus, ScanLine, Trash2, X } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Copy, FileUp, KeyRound, Loader2, Lock, LockOpen, Plus, ScanLine, Settings2, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { clampOdds, generateOdds, type Fixture, type Market, type MatchOdds } from "@/lib/odds";
+import { fluctuateOdds, generateOdds, moveOdds, orderedSelections, selectionLabel, type Fixture, type Market, type MatchOdds, type Selection } from "@/lib/odds";
 import { scanFixtures } from "@/lib/scan.functions";
 import { isLocked, isPicked, togglePick, type Slip } from "@/lib/slip";
 
@@ -20,11 +20,23 @@ export function MatchCreator({ admin, notify, matches, setMatches, slip, setSlip
   const [date, setDate] = useState(() => localDate(new Date()));
   const [deadline, setDeadline] = useState("");
   const [featured, setFeatured] = useState("");
+  const [oddsDrafts, setOddsDrafts] = useState<Record<string, string>>({});
   const closesAt = date && deadline ? new Date(`${date}T${deadline}`) : null;
   const deadlineError = closesAt && closesAt.getTime() <= Date.now() ? "Deadline must be in the future" : "";
   const featuredId = matches.some((m) => m.id === featured) ? featured : "";
   const ready = !!closesAt && !deadlineError && !!featuredId;
   const quick = (mins: number) => { const d = new Date(Date.now() + mins * 60000); setDate(localDate(d)); setDeadline(d.toTimeString().slice(0, 5)); };
+
+  useEffect(() => {
+    if (admin || locked || matches.length === 0) return;
+    const timer = window.setInterval(() => {
+      setMatches((current) => current.map((match) => ({
+        ...match,
+        selections: match.selections.map((selection) => selection.locked || selection.hidden ? selection : { ...selection, ...fluctuateOdds(selection.odds) }),
+      })));
+    }, 30_000);
+    return () => window.clearInterval(timer);
+  }, [admin, locked, matches.length, setMatches]);
 
   const onFile = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -50,8 +62,17 @@ export function MatchCreator({ admin, notify, matches, setMatches, slip, setSlip
     notify(`${generated.length} matches priced`);
   };
 
-  const editOdds = (id: string, key: string, v: string) => setMatches((ms) => ms.map((m) => m.id !== id ? m : { ...m, selections: m.selections.map((s) => s.key === key ? { ...s, odds: Number(v) || s.odds } : s) }));
-  const fixOdds = (id: string) => setMatches((ms) => ms.map((m) => m.id !== id ? m : { ...m, selections: m.selections.map((s) => ({ ...s, odds: clampOdds(s.odds) })) }));
+  const editOdds = (id: string, key: string, value: string) => {
+    const draftKey = `${id}:${key}`;
+    setOddsDrafts((current) => ({ ...current, [draftKey]: value }));
+    const odds = Number(value);
+    if (value.trim() === "" || !Number.isFinite(odds)) return;
+    setMatches((current) => current.map((match) => match.id !== id ? match : { ...match, selections: match.selections.map((selection) => selection.key === key ? { ...selection, odds, trend: "same" } : selection) }));
+  };
+  const updateSelections = (id: string, keys: string[], change: (selection: Selection) => Selection) => setMatches((current) => current.map((match) => match.id !== id ? match : { ...match, selections: match.selections.map((selection) => keys.includes(selection.key) ? change(selection) : selection) }));
+  const toggleLock = (id: string, key: string) => updateSelections(id, [key], (selection) => ({ ...selection, locked: !selection.locked }));
+  const moveGroup = (id: string, keys: string[], delta: number) => updateSelections(id, keys, (selection) => ({ ...selection, ...moveOdds(selection.odds, delta) }));
+  const hideGroup = (id: string, keys: string[]) => updateSelections(id, keys, (selection) => ({ ...selection, hidden: true }));
 
   const publish = async () => {
     if (!ready) return;
@@ -94,32 +115,42 @@ export function MatchCreator({ admin, notify, matches, setMatches, slip, setSlip
                 {slip[m.id] && <span className="rounded-sm bg-primary px-1.5 py-0.5 text-[9px] font-black text-primary-foreground">{[slip[m.id]!.result, slip[m.id]!.goals].filter(Boolean).join(" + ")}</span>}
                 <ChevronDown size={16} className={`transition-transform ${open === m.id ? "rotate-180" : ""}`} />
               </button>
-              {open === m.id && (
+              {open === m.id && (admin ? (
+                <AdminOddsGrid
+                  match={m}
+                  oddsDrafts={oddsDrafts}
+                  onEdit={editOdds}
+                  onLock={toggleLock}
+                  onMove={moveGroup}
+                  onHide={hideGroup}
+                  onRemove={() => setMatches((current) => current.filter((match) => match.id !== m.id))}
+                />
+              ) : (
                 <div className="space-y-3 border-t border-border p-3">
-                  {MARKETS.map((mk) => (
-                    <div key={mk}>
-                      <p className="mb-1.5 text-[9px] font-bold uppercase text-muted-foreground">{mk}</p>
-                      <div className={`grid gap-1.5 ${mk === "Over/Under" ? "grid-cols-2" : "grid-cols-3"}`}>
-                        {m.selections.filter((s) => s.market === mk).map((s) => {
-                          const on = isPicked(slip[m.id], s);
-                                                    return admin ? (
-                            <label key={s.key} className="flex items-center gap-1 rounded-md border border-border bg-field px-2 py-1 text-[10px]">
-                              <span className="w-12 shrink-0 text-muted-foreground">{s.label}</span>
-                              <Input type="number" step="0.001" min={1.003} max={1.5} value={s.odds} onChange={(e) => editOdds(m.id, s.key, e.target.value)} onBlur={() => fixOdds(m.id)} className="h-7 bg-transparent px-1 text-xs" />
-                            </label>
-                          ) : (
-                            <Button key={s.key} variant={on ? "default" : "secondary"} disabled={isLocked(slip[m.id], s) || locked} aria-pressed={on} onClick={() => setSlip((o) => togglePick(o, m.id, s))} className="h-11 flex-col gap-0 text-[10px] disabled:opacity-30">
-                              <span className={on ? "" : "text-muted-foreground"}>{s.label}</span>
-                              <span className="font-mono text-xs font-black">{s.odds.toFixed(3)}</span>
-                            </Button>
-                          );
-                        })}
+                  {MARKETS.map((market) => {
+                    const selections = orderedSelections(m.selections, market).filter((selection) => !selection.hidden);
+                    if (!selections.length) return null;
+                    return (
+                      <div key={market}>
+                        <p className="mb-1.5 text-[9px] font-bold uppercase text-muted-foreground">{market}</p>
+                        <div className={`grid gap-1.5 ${market === "Over/Under" ? "grid-cols-2" : "grid-cols-3"}`}>
+                          {selections.map((selection) => {
+                            const on = isPicked(slip[m.id], selection);
+                            const selectionLocked = !!selection.locked;
+                            const trend = selection.trend === "up" ? "text-success" : selection.trend === "down" ? "text-destructive" : "text-foreground";
+                            return (
+                              <Button key={selection.key} variant={on ? "default" : "secondary"} disabled={selectionLocked || isLocked(slip[m.id], selection) || locked} aria-pressed={on} onClick={() => setSlip((current) => togglePick(current, m.id, selection))} className="h-12 flex-col gap-0 text-[10px] disabled:opacity-60">
+                                <span className={on ? "" : "text-muted-foreground"}>{selectionLabel(selection)}</span>
+                                {selectionLocked ? <span className="flex items-center gap-1 text-[9px] font-black text-warning"><Lock size={10} /> LOCKED</span> : <span className={`font-mono text-xs font-black ${on ? "" : trend}`}>{selection.odds.toFixed(3)}</span>}
+                              </Button>
+                            );
+                          })}
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                  {admin && <Button variant="ghost" size="sm" onClick={() => setMatches((ms) => ms.filter((x) => x.id !== m.id))} className="text-destructive"><Trash2 /> Remove fixture</Button>}
+                    );
+                  })}
                 </div>
-              )}
+              ))}
             </article>
           ))}
 
