@@ -3,8 +3,22 @@ export const MAX_ODDS = 1.5;
 
 export type Fixture = { home: string; away: string; time: string };
 export type Market = "1X2" | "Double Chance" | "Over/Under";
-export type Selection = { key: string; label: string; market: Market; odds: number };
+export type OddsTrend = "up" | "down" | "same";
+export type Selection = { key: string; label: string; market: Market; odds: number; locked?: boolean; hidden?: boolean; trend?: OddsTrend };
 export type MatchOdds = Fixture & { id: string; selections: Selection[] };
+
+export const MARKET_ORDER: Record<Market, string[]> = {
+  "1X2": ["1", "X", "2"],
+  "Double Chance": ["1X", "12", "X2"],
+  "Over/Under": ["O2.5", "U2.5", "O3.5", "U3.5", "O4.5", "U4.5"],
+};
+
+export const selectionLabel = (s: Pick<Selection, "key" | "label">) => ({ "1": "W1", "2": "W2", X2: "2X" }[s.key] ?? s.label);
+
+export function orderedSelections(selections: Selection[], market: Market): Selection[] {
+  const order = MARKET_ORDER[market];
+  return selections.filter((s) => s.market === market).sort((a, b) => order.indexOf(a.key) - order.indexOf(b.key));
+}
 
 // Historical baseline strength (0-100) for well-known clubs.
 const RATINGS: Record<string, number> = {
@@ -25,6 +39,16 @@ export function teamStrength(name: string): number {
 }
 
 export const clampOdds = (v: number) => Math.round(Math.min(MAX_ODDS, Math.max(MIN_ODDS, v)) * 1000) / 1000;
+export function moveOdds(previous: number, delta: number): Pick<Selection, "odds" | "trend"> {
+  const odds = clampOdds(previous + delta);
+  return { odds, trend: odds > previous ? "up" : odds < previous ? "down" : "same" };
+}
+
+export function fluctuateOdds(previous: number, random = Math.random): Pick<Selection, "odds" | "trend"> {
+  const direction = random() < 0.45 ? -1 : random() > 0.55 ? 1 : 0;
+  const amount = direction === 0 ? 0 : Math.max(0.001, Math.round(random() * 30) / 1000);
+  return moveOdds(previous, direction * amount);
+}
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
 export function generateOdds(f: Fixture, id: string): MatchOdds {
@@ -48,12 +72,12 @@ export function generateOdds(f: Fixture, id: string): MatchOdds {
     ...f,
     id,
     selections: [
-      s("1", "1", "1X2", home),
+      s("1", "W1", "1X2", home),
       s("X", "X", "1X2", draw),
-      s("2", "2", "1X2", away),
+      s("2", "W2", "1X2", away),
       s("1X", "1X", "Double Chance", (home + draw) / 2 - 0.1),
-      s("X2", "X2", "Double Chance", (away + draw) / 2 - 0.1),
       s("12", "12", "Double Chance", Math.min(home, away) - 0.05),
+      s("X2", "2X", "Double Chance", (away + draw) / 2 - 0.1),
       ...[2.5, 3.5, 4.5].flatMap((l) => [s(`O${l}`, `Over ${l}`, "Over/Under", over(l)), s(`U${l}`, `Under ${l}`, "Over/Under", under(l))]),
     ],
   };

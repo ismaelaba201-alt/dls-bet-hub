@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clampOdds, generateOdds } from "./odds";
+import { clampOdds, fluctuateOdds, generateOdds, moveOdds, orderedSelections, selectionLabel } from "./odds";
 
 const pairs: Array<[string, string]> = [["Man City", "Liverpool"], ["Real Madrid", "Ajax"], ["Fooville", "Bartown"], ["Sevilla", "Bayern Munich"]];
 
@@ -25,5 +25,16 @@ describe("odds engine", () => {
   it("clamps manual edits", () => {
     expect(clampOdds(0.5)).toBe(1.003);
     expect(clampOdds(3)).toBe(1.5);
+  });
+  it("displays standard 1X2 and Double Chance ordering", () => {
+    const selections = generateOdds({ home: "A", away: "B", time: "" }, "x").selections;
+    expect(orderedSelections(selections, "1X2").map(selectionLabel)).toEqual(["W1", "X", "W2"]);
+    expect(orderedSelections(selections, "Double Chance").map(selectionLabel)).toEqual(["1X", "12", "2X"]);
+  });
+  it("moves odds within bounds and reports their direction", () => {
+    expect(moveOdds(1.2, 0.1)).toEqual({ odds: 1.3, trend: "up" });
+    expect(moveOdds(1.2, -0.1)).toEqual({ odds: 1.1, trend: "down" });
+    expect(moveOdds(1.5, 0.1)).toEqual({ odds: 1.5, trend: "same" });
+    expect(fluctuateOdds(1.003, () => 0)).toEqual({ odds: 1.003, trend: "same" });
   });
 });
