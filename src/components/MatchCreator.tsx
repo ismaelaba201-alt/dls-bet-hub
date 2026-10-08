@@ -214,6 +214,101 @@ export function MatchCreator({ admin, notify, matches, setMatches, slip, setSlip
   );
 }
 
+function AdminOddsGrid({ match, oddsDrafts, onEdit, onLock, onMove, onHide, onRemove }: {
+  match: MatchOdds;
+  oddsDrafts: Record<string, string>;
+  onEdit: (id: string, key: string, value: string) => void;
+  onLock: (id: string, key: string) => void;
+  onMove: (id: string, keys: string[], delta: number) => void;
+  onHide: (id: string, keys: string[]) => void;
+  onRemove: () => void;
+}) {
+  const visible = (market: Market) => orderedSelections(match.selections, market).filter((selection) => !selection.hidden);
+  const resultSections: Array<{ title: string; market: Market }> = [{ title: "1X2", market: "1X2" }, { title: "Double chance", market: "Double Chance" }];
+  const goals = ["2.5", "3.5", "4.5"];
+  return (
+    <div className="border-t border-border">
+      <div className="flex items-center justify-between gap-2 border-b border-border p-3">
+        <h3 className="flex min-w-0 items-center gap-2 text-xs font-black"><Settings2 size={17} className="shrink-0 text-primary" /> Admin Panel - Match Odds Management</h3>
+        <Button variant="outline" size="sm" onClick={onRemove} className="shrink-0 text-[9px] text-destructive"><X /> Remove Market</Button>
+      </div>
+      {resultSections.map(({ title, market }) => {
+        const selections = visible(market);
+        if (!selections.length) return null;
+        const keys = selections.map((selection) => selection.key);
+        return (
+          <section key={market} className="space-y-2 border-b border-border p-3">
+            <h4 className="text-sm font-bold text-primary">{title}</h4>
+            <div className="overflow-x-auto pb-1">
+              <div className="grid min-w-[34rem] grid-cols-[repeat(3,minmax(6.5rem,1fr))_11rem_4.25rem] overflow-hidden rounded-md border border-border bg-field">
+                {selections.map((selection) => <OddsCell key={selection.key} matchId={match.id} selection={selection} draft={oddsDrafts[`${match.id}:${selection.key}`]} onEdit={onEdit} onLock={onLock} />)}
+                <FluctuationCell onUp={() => onMove(match.id, keys, 0.1)} onDown={() => onMove(match.id, keys, -0.1)} />
+                <RemoveCell label onClick={() => onHide(match.id, keys)} />
+              </div>
+            </div>
+          </section>
+        );
+      })}
+      {visible("Over/Under").length > 0 && (
+        <section className="space-y-2 p-3">
+          <h4 className="text-sm font-bold text-primary">Over/under</h4>
+          <div className="space-y-1.5 overflow-x-auto pb-1">
+            {goals.map((line) => {
+              const selections = visible("Over/Under").filter((selection) => selection.key.endsWith(line));
+              if (!selections.length) return null;
+              const keys = selections.map((selection) => selection.key);
+              return (
+                <div key={line} className="grid min-w-[34rem] grid-cols-[repeat(2,minmax(9.75rem,1fr))_11rem_4.25rem] overflow-hidden rounded-md border border-border bg-field">
+                  {selections.map((selection) => <OddsCell key={selection.key} matchId={match.id} selection={selection} draft={oddsDrafts[`${match.id}:${selection.key}`]} onEdit={onEdit} onLock={onLock} />)}
+                  <FluctuationCell onUp={() => onMove(match.id, keys, 0.1)} onDown={() => onMove(match.id, keys, -0.1)} />
+                  <RemoveCell onClick={() => onHide(match.id, keys)} />
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+    </div>
+  );
+}
+
+function OddsCell({ matchId, selection, draft, onEdit, onLock }: { matchId: string; selection: Selection; draft?: string; onEdit: (id: string, key: string, value: string) => void; onLock: (id: string, key: string) => void }) {
+  return (
+    <div className="border-r border-border p-2">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <span className="text-[10px] font-bold text-primary">{selectionLabel(selection)}</span>
+        <Button variant="ghost" size="icon" onClick={() => onLock(matchId, selection.key)} aria-label={`${selection.locked ? "Unlock" : "Lock"} ${selectionLabel(selection)}`} className={`size-6 ${selection.locked ? "text-warning" : "text-primary"}`}>
+          {selection.locked ? <Lock size={13} /> : <LockOpen size={13} />}
+        </Button>
+      </div>
+      <Input inputMode="decimal" value={draft ?? String(selection.odds)} onChange={(event) => onEdit(matchId, selection.key, event.target.value)} className="h-11 bg-surface-raised text-center font-mono text-sm font-black" />
+    </div>
+  );
+}
+
+function FluctuationCell({ onUp, onDown }: { onUp: () => void; onDown: () => void }) {
+  return (
+    <div className="border-r border-border p-2">
+      <span className="mb-2 block text-[10px] text-muted-foreground">fluctuation</span>
+      <div className="grid grid-cols-[1fr_2rem_1fr_2rem] gap-1">
+        <span className="grid h-10 place-items-center rounded-md border border-input bg-surface-raised font-mono text-xs">0.10</span>
+        <Button variant="outline" size="icon" onClick={onUp} aria-label="Increase odds by 0.10" className="h-10 w-8 text-primary"><ChevronRight /></Button>
+        <span className="grid h-10 place-items-center rounded-md border border-input bg-surface-raised font-mono text-xs">0.10</span>
+        <Button variant="outline" size="icon" onClick={onDown} aria-label="Decrease odds by 0.10" className="h-10 w-8 text-destructive"><ChevronLeft /></Button>
+      </div>
+    </div>
+  );
+}
+
+function RemoveCell({ onClick, label = false }: { onClick: () => void; label?: boolean }) {
+  return (
+    <div className="grid place-items-center p-2">
+      {label && <span className="text-center text-[9px] leading-3 text-muted-foreground">remove<br />market</span>}
+      <Button variant="ghost" size="icon" onClick={onClick} aria-label="Remove market" className="text-destructive"><X /></Button>
+    </div>
+  );
+}
+
 function localDate(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
