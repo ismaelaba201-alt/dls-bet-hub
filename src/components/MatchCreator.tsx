@@ -272,7 +272,7 @@ function AdminOddsGrid({ match, oddsDrafts, onEdit, onLock, onMove, onHide, onRe
   );
 }
 
-function OddsCell({ matchId, selection, draft, onEdit, onLock }: { matchId: string; selection: Selection; draft?: string; onEdit: (id: string, key: string, value: string) => void; onLock: (id: string, key: string) => void }) {
+function OddsCell({ matchId, selection, draft, onEdit, onLock }: { matchId: string; selection: Selection; draft: string | undefined; onEdit: (id: string, key: string, value: string) => void; onLock: (id: string, key: string) => void }) {
   return (
     <div className="border-r border-border p-2">
       <div className="mb-2 flex items-center justify-between gap-2">
