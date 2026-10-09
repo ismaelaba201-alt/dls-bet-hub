@@ -195,15 +195,15 @@ function BcAdmin({ wallet, close, notify }: { wallet: Wallet; close: () => void;
   const [d, setD] = useState<Settings>(wallet.settings);
   const set = <K extends keyof Settings>(k: K, v: Settings[K]) => setD((o) => ({ ...o, [k]: v }));
   const setTier = (id: string, patch: Partial<Tier>) => set("tiers", d.tiers.map((t) => (t.id === id ? { ...t, ...patch } : t)));
-  const F = ({ label, k }: { label: string; k: "ussd" | "currencyName" | "currencySymbol" | "promoHeadline" | "promoBody" | "promoCta" | "slipNotice" | "slipLink" }) => (
-    <label className="block text-[10px] font-bold uppercase text-muted-foreground">{label}
+  const f = (label: string, k: "ussd" | "currencyName" | "currencySymbol" | "promoHeadline" | "promoBody" | "promoCta" | "slipNotice" | "slipLink") => (
+    <label key={k} className="block text-[10px] font-bold uppercase text-muted-foreground">{label}
       <Input value={d[k]} onChange={(e) => set(k, e.target.value)} className="mt-1 bg-field text-xs normal-case" />
     </label>
   );
   return (
     <Sheet title="Economy Configurator" close={close}>
-      <Group title="Payment settings"><F label="Deposit USSD number" k="ussd" /></Group>
-      <Group title="Virtual currency"><div className="grid grid-cols-2 gap-2"><F label="Currency name" k="currencyName" /><F label="Symbol" k="currencySymbol" /></div></Group>
+      <Group title="Payment settings">{f("Deposit USSD number", "ussd")}</Group>
+      <Group title="Virtual currency"><div className="grid grid-cols-2 gap-2">{f("Currency name", "currencyName")}{f("Symbol", "currencySymbol")}</div></Group>
       <Group title="Purchase tiers">
         {d.tiers.map((t) => (
           <div key={t.id} className="grid grid-cols-[1fr_1fr_1fr_auto] items-end gap-1.5">
@@ -215,8 +215,8 @@ function BcAdmin({ wallet, close, notify }: { wallet: Wallet; close: () => void;
         ))}
         <Button variant="outline" onClick={() => set("tiers", [...d.tiers, { id: Date.now().toString(36), mb: 100, bc: 1000, badge: "" }])} className="w-full border-dashed text-xs text-primary"><Plus /> Add new tier</Button>
       </Group>
-      <Group title="Wallet promo banner"><F label="Headline" k="promoHeadline" /><F label="Body" k="promoBody" /><F label="Button label" k="promoCta" /></Group>
-      <Group title="Custom bet slip promo"><F label="Notice text" k="slipNotice" /><F label="Link text" k="slipLink" /></Group>
+      <Group title="Wallet promo banner">{f("Headline", "promoHeadline")}{f("Body", "promoBody")}{f("Button label", "promoCta")}</Group>
+      <Group title="Custom bet slip promo">{f("Notice text", "slipNotice")}{f("Link text", "slipLink")}</Group>
       <Button onClick={() => { wallet.saveSettings({ ...d, tiers: d.tiers.filter((t) => t.mb > 0 && t.bc > 0) }); notify("Settings saved"); close(); }} className="h-12 w-full text-xs font-black uppercase"><Save /> Save all settings</Button>
     </Sheet>
   );
