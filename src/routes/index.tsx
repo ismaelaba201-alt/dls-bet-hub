@@ -24,6 +24,9 @@ import { BetSlip } from "@/components/BetSlip";
 import { History as HistoryView } from "@/components/History";
 import { GameCodeLoader } from "@/components/GameCodeLoader";
 import { FeaturedCarousel } from "@/components/FeaturedCarousel";
+import { OfficialHub } from "@/components/OfficialHub";
+import { WalletModals, WalletPills, type WalletModal } from "@/components/Wallet";
+import { useWallet } from "@/hooks/use-wallet";
 import { EXPIRED, loadGame } from "@/lib/games.functions";
 import { isExpired } from "@/lib/teams";
 import type { Bet } from "@/lib/bets";
@@ -73,6 +76,8 @@ function Index() {
   const [closesAt, setClosesAt] = useState<string | null>(null);
   const [bets, setBets] = useState<Bet[]>([]);
   const [betsLoaded, setBetsLoaded] = useState(false);
+  const wallet = useWallet();
+  const [walletModal, setWalletModal] = useState<WalletModal>(null);
   useEffect(() => {
     try { setBets(JSON.parse(localStorage.getItem("dls-bets") ?? "[]")); } catch {}
     setBetsLoaded(true);
@@ -144,16 +149,17 @@ function Index() {
       <div className="fixed inset-0 bg-background/80" />
 
       <div className="relative mx-auto flex min-h-dvh w-full max-w-md flex-col px-3 pb-24 pt-2">
-        <header className="mb-2 flex h-14 items-center justify-between px-1">
-          <div className="flex min-w-0 items-center gap-2">
-            <div className="grid size-9 shrink-0 place-items-center rounded-full border border-primary/40 bg-primary/15 text-primary">
+        <header className="mb-2 flex h-14 items-center justify-between gap-1.5 px-1">
+          <div className="flex min-w-0 items-center gap-1.5">
+            <div className="grid size-8 shrink-0 place-items-center rounded-full border border-primary/40 bg-primary/15 text-primary">
               <Gamepad2 size={19} />
             </div>
-            <h1 className="truncate pt-1 font-heading text-3xl font-bold uppercase leading-none">DLS BET SIM</h1>
+            <h1 className="truncate pt-1 font-heading text-xl font-bold uppercase leading-none">DLS BET SIM</h1>
           </div>
-          <Button variant="secondary" size="sm" onClick={() => setAdmin((value) => !value)} aria-pressed={admin} className={admin ? "border border-primary/60 text-primary" : "border border-border text-muted-foreground"}>
+          <Button variant="secondary" size="sm" onClick={() => setAdmin((value) => !value)} aria-pressed={admin} className={`h-8 shrink-0 px-2 text-[10px] ${admin ? "border border-primary/60 text-primary" : "border border-border text-muted-foreground"}`}>
             <UserCog /> {admin ? "Admin: On" : "Admin: Off"}
           </Button>
+          <WalletPills wallet={wallet} setModal={setWalletModal} />
         </header>
 
         <main className="flex-1">
@@ -182,7 +188,7 @@ function Index() {
 
               <div className="flex h-9 items-center justify-center gap-2 overflow-hidden rounded-md border border-border bg-secondary/80 px-3 text-center text-[11px]">
                 <span>🔥</span>
-                <p className="truncate text-muted-foreground">Top Winner: <span className="font-bold text-primary">@Alex</span> won <span className="font-bold text-warning">₦15,000</span> on 12.50 Odds</p>
+                <p className="truncate text-muted-foreground">Top Winner: <span className="font-bold text-primary">@Alex</span> won <span className="font-bold text-warning">15 GB</span> on 12.50 Odds</p>
               </div>
 
               {expired && <p role="alert" className="rounded-md border border-destructive/60 bg-destructive/15 p-3 text-xs font-bold text-destructive">{EXPIRED}</p>}
@@ -193,11 +199,16 @@ function Index() {
 
           {tab === "dlshub" && <Hub view={hubView} setView={setHubView} admin={admin} notify={setToast} />}
 
-          {tab === "betslip" && <BetSlip matches={matches} slip={slip} setSlip={setSlip} gameCode={gameCode} expired={expired} notify={setToast} onLoadCode={(g, m, s, c) => { const locked = applyGame(g, m, c, s); setToast(locked ? "Betting is closed for this code" : "Bet code loaded — enter your stake"); }} onPlace={(b) => { setBets((old) => [b, ...old]); setSlip({}); setTab("history"); setToast("Bet placed — pending result"); }} onBrowse={() => setTab("matchday")} />}
+          {tab === "betslip" && <BetSlip matches={matches} slip={slip} setSlip={setSlip} gameCode={gameCode} expired={expired} notify={setToast} onLoadCode={(g, m, s, c) => { const locked = applyGame(g, m, c, s); setToast(locked ? "Betting is closed for this code" : "Bet code loaded — enter your stake"); }} onPlace={(b) => { wallet.debit(b.currency ?? "MB", b.stake, "Stake", b.betCode ?? b.id); setBets((old) => [b, ...old]); setSlip({}); setTab("history"); setToast("Bet placed — pending result"); }} onBrowse={() => setTab("matchday")} wallet={wallet} openWallet={setWalletModal} onOfficial={() => setTab("gamecode")} />}
 
-          {tab === "history" && <HistoryView admin={admin} bets={bets} notify={setToast} onSettle={(b) => setBets((old) => old.map((x) => (x.id === b.id ? b : x)))} />}
+          {tab === "history" && <HistoryView admin={admin} bets={bets} notify={setToast} onSettle={(b) => { const prev = bets.find((x) => x.id === b.id); if (b.status === "WON" && prev?.status === "PENDING") wallet.credit(b.currency ?? "MB", b.payout, "Win", b.betCode ?? b.id); setBets((old) => old.map((x) => (x.id === b.id ? b : x))); }} />}
 
-          {tab === "gamecode" && <GameCodeLoader onLoaded={(code, m, c) => { if (!applyGame(code, m, c)) { setTab("matchday"); setToast(`${m.length} matches loaded`); } }} />}
+          {tab === "gamecode" && (
+            <>
+              <GameCodeLoader onLoaded={(code, m, c) => { if (!applyGame(code, m, c)) { setTab("matchday"); setToast(`${m.length} matches loaded`); } }} />
+              <OfficialHub now={now} onPlay={loadGameCode} />
+            </>
+          )}
 
         </main>
       </div>
@@ -207,6 +218,8 @@ function Index() {
           📋 Bet Slip <span className="ml-1 grid min-w-5 place-items-center rounded-full bg-background px-1.5 text-[10px] text-primary">{slipCount}</span>
         </Button>
       )}
+
+      <WalletModals wallet={wallet} modal={walletModal} setModal={setWalletModal} admin={admin} notify={setToast} onOfficial={() => setTab("gamecode")} />
 
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 px-2 pb-[max(.55rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-xl" aria-label="Main navigation">
         <div className="mx-auto grid max-w-md grid-cols-5 gap-1">

@@ -21,7 +21,7 @@ export function GameCodeLoader({ onLoaded }: { onLoaded: (code: string, matches:
     onLoaded(g.code, g.matches, g.closesAt);
   };
   return (
-    <section className="glass-panel mt-16 flex flex-col items-center gap-4 rounded-lg px-6 py-10 text-center">
+    <section className="glass-panel mt-4 flex flex-col items-center gap-4 rounded-lg px-6 py-8 text-center">
       <KeyRound className="text-primary" size={38} />
       <h2 className="font-heading text-3xl font-bold uppercase">Enter Game Code</h2>
       <Input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} onKeyDown={(e) => e.key === "Enter" && load()} placeholder="DLS-4RMCH-AB12" aria-label="Enter game code" className="h-12 bg-field text-center font-mono text-lg tracking-widest" />
