@@ -1,7 +1,7 @@
 import type { MatchOdds, Selection } from "./odds";
 
 export const STAKE_MIN = 10;
-export const STAKE_MAX = 50;
+export const STAKE_MAX = 500;
 
 export type Pick = { result?: string; goals?: string };
 export type Slip = Record<string, Pick>;
@@ -40,10 +40,10 @@ export function slipLines(slip: Slip, matches: MatchOdds[]) {
 
 export const totalOdds = (odds: number[]) => Math.round(odds.reduce((a, b) => a * b, 1) * 1000) / 1000;
 
-export function stakeError(stake: number): string | null {
+export function stakeError(stake: number, limits = { min: STAKE_MIN, max: STAKE_MAX }, unit = "MB"): string | null {
   if (!Number.isFinite(stake)) return "Enter a stake amount";
-  if (stake < STAKE_MIN) return `Minimum stake is ₦${STAKE_MIN}`;
-  if (stake > STAKE_MAX) return `Maximum stake is ₦${STAKE_MAX}`;
+  if (stake < limits.min) return `Minimum stake is ${limits.min} ${unit}`;
+  if (stake > limits.max) return `Maximum stake is ${limits.max.toLocaleString("en-US")} ${unit}`;
   return null;
 }
 
