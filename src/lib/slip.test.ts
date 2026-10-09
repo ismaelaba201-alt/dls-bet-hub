@@ -28,11 +28,11 @@ describe("bet slip rules", () => {
     expect(slip["m1"]).toBeUndefined();
     expect(isLocked(slip["m1"], sel("1X"))).toBe(false);
   });
-  it("enforces stake ₦10–₦50", () => {
+  it("enforces stake 10–500 MB", () => {
     expect(stakeError(9)).not.toBeNull();
-    expect(stakeError(51)).not.toBeNull();
+    expect(stakeError(501)).not.toBeNull();
     expect(stakeError(10)).toBeNull();
-    expect(stakeError(50)).toBeNull();
+    expect(stakeError(500)).toBeNull();
   });
   it("multiplies odds and computes payout", () => {
     expect(totalOdds([1.2, 1.5])).toBe(1.8);

@@ -1,3 +1,4 @@
+import { formatMB } from "@/lib/wallet";
 import { useRef, useState, type ChangeEvent } from "react";
 import { createPortal } from "react-dom";
 import { Camera, Check, Copy, History as HistoryIcon, Loader2, Search, X } from "lucide-react";
@@ -120,8 +121,8 @@ function BetCard({ bet, onSettle, notify }: { bet: Bet; onSettle: (b: Bet) => vo
       </ul>
       <div className="grid grid-cols-3 gap-2 border-t border-border pt-2 text-center text-[10px]">
         <div><p className="text-muted-foreground">Total odds</p><p className="font-mono text-xs font-black text-warning">{bet.totalOdds.toFixed(3)}</p></div>
-        <div><p className="text-muted-foreground">Stake</p><p className="font-mono text-xs font-black">₦{bet.stake}</p></div>
-        <div><p className="text-muted-foreground">{bet.status === "WON" ? "Won" : "Potential"}</p><p className={`font-mono text-xs font-black ${bet.status === "LOST" ? "text-muted-foreground line-through" : "text-primary"}`}>₦{bet.payout.toFixed(2)}</p></div>
+        <div><p className="text-muted-foreground">Stake</p><p className="font-mono text-xs font-black">{money(bet.stake, bet.currency)}</p></div>
+        <div><p className="text-muted-foreground">{bet.status === "WON" ? "Won" : "Potential"}</p><p className={`font-mono text-xs font-black ${bet.status === "LOST" ? "text-muted-foreground line-through" : "text-primary"}`}>{money(bet.payout, bet.currency)}</p></div>
       </div>
       {bet.resultImage && <img src={bet.resultImage} alt="Official match result screenshot" className="max-h-64 w-full rounded-md border border-border bg-field object-contain" />}
       {bet.status === "PENDING" && bet.gameCode && (
@@ -172,3 +173,5 @@ function BetCard({ bet, onSettle, notify }: { bet: Bet; onSettle: (b: Bet) => vo
     </article>
   );
 }
+
+function money(n: number, c: "MB" | "BC" | undefined) { return c === "BC" ? `${n.toLocaleString("en-US")} BC` : formatMB(n); }

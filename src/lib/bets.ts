@@ -3,7 +3,7 @@ import type { Market } from "./odds";
 export type LegResult = "won" | "lost";
 export type Leg = { matchId: string; home: string; away: string; time: string; market: Market; key: string; label: string; odds: number; result?: LegResult; score?: string };
 export type BetStatus = "PENDING" | "WON" | "LOST";
-export type Bet = { id: string; placedAt: number; legs: Leg[]; totalOdds: number; stake: number; payout: number; status: BetStatus; settledAt?: number; gameCode?: string | undefined; betCode?: string | undefined; resultImage?: string | undefined };
+export type Bet = { id: string; placedAt: number; legs: Leg[]; totalOdds: number; stake: number; payout: number; status: BetStatus; settledAt?: number; gameCode?: string | undefined; betCode?: string | undefined; resultImage?: string | undefined; currency?: "MB" | "BC" | undefined };
 export type ScoreLine = { home: string; away: string; homeScore: number; awayScore: number };
 
 export const MISMATCH_ERROR = "Uploaded screenshot does not match the fixtures on this bet ticket.";
