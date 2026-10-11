@@ -34,7 +34,9 @@ describe("wallet rules", () => {
     expect(withdrawError(800, 800)).toBeNull();
   });
   it("buying BC needs enough MB", () => {
+    expect(buyTierError({ id: "a", mb: 100, bc: 1000, badge: "" }, 0)).not.toBeNull();
     expect(buyTierError({ id: "a", mb: 100, bc: 1000, badge: "" }, 99)).not.toBeNull();
     expect(buyTierError({ id: "a", mb: 100, bc: 1000, badge: "" }, 100)).toBeNull();
+    expect(buyTierError({ id: "a", mb: 100, bc: 1000, badge: "" }, 101)).toBeNull();
   });
 });

@@ -33,16 +33,17 @@ import type { Bet } from "@/lib/bets";
 import type { MatchOdds } from "@/lib/odds";
 import { slipLines, type Slip } from "@/lib/slip";
 import stadiumPitch from "@/assets/stadium-pitch.jpg";
+import brandLogo from "@/assets/dls-arena-x-logo.png.asset.json";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Matchday — DLS BET SIM" },
-      { name: "description", content: "Build your DLS matchday, follow the featured fixture, and copy the current game code." },
-      { property: "og:title", content: "Matchday — DLS BET SIM" },
-      { property: "og:description", content: "Build your DLS matchday, follow the featured fixture, and copy the current game code." },
+      { title: "DLS ARENA X — PLAY. BET. WIN." },
+      { name: "description", content: "DLS ARENA X: create matchdays, share game codes, manage MB and Battle Coins, and follow your bets. PLAY. BET. WIN." },
+      { property: "og:title", content: "DLS ARENA X — PLAY. BET. WIN." },
+      { property: "og:description", content: "Create matchdays, share game codes, and manage your MB and Battle Coins in DLS ARENA X." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -144,17 +145,18 @@ function Index() {
   };
 
   return (
-    <div className="relative min-h-dvh overflow-x-hidden bg-background text-foreground">
+    <div className="relative min-h-dvh overflow-x-clip bg-background text-foreground">
       <img src={stadiumPitch} alt="Floodlit football stadium" width={1024} height={1536} className="fixed inset-0 h-full w-full object-cover opacity-30" />
       <div className="fixed inset-0 bg-background/80" />
 
       <div className="relative mx-auto flex min-h-dvh w-full max-w-md flex-col px-3 pb-24 pt-2">
-        <header className="mb-2 flex h-14 items-center justify-between gap-1.5 px-1">
+        <header className="sticky top-0 z-40 -mx-3 mb-2 flex min-h-20 shrink-0 items-center justify-between gap-1.5 border-b border-border bg-background/95 px-3 py-2 backdrop-blur-xl" aria-label="DLS ARENA X header">
           <div className="flex min-w-0 items-center gap-1.5">
-            <div className="grid size-8 shrink-0 place-items-center rounded-full border border-primary/40 bg-primary/15 text-primary">
-              <Gamepad2 size={19} />
+            <img src={brandLogo.url} alt="DLS ARENA X mascot" width={44} height={44} className="size-9 shrink-0 object-contain sm:size-11" />
+            <div className="min-w-0">
+              <h1 className="font-heading text-sm font-bold uppercase leading-none sm:text-xl">DLS ARENA <span className="text-warning">X</span></h1>
+              <p className="mt-1 text-[7px] font-bold text-warning sm:text-[9px]">PLAY. BET. WIN.</p>
             </div>
-            <h1 className="truncate pt-1 font-heading text-xl font-bold uppercase leading-none">DLS BET SIM</h1>
           </div>
           <Button variant="secondary" size="sm" onClick={() => setAdmin((value) => !value)} aria-pressed={admin} className={`h-8 shrink-0 px-2 text-[10px] ${admin ? "border border-primary/60 text-primary" : "border border-border text-muted-foreground"}`}>
             <UserCog /> {admin ? "Admin: On" : "Admin: Off"}
@@ -231,8 +233,8 @@ function Index() {
         </div>
       </nav>
 
-      <div aria-live="polite" className={`fixed bottom-20 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-md bg-primary px-4 py-2 text-xs font-bold text-primary-foreground shadow-xl transition-all ${toast ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"}`}>
-        <Check size={15} /> {toast}
+      <div role="status" aria-live="polite" className={`fixed bottom-20 left-1/2 z-[60] flex w-max max-w-[calc(100%-2rem)] -translate-x-1/2 items-center gap-2 whitespace-normal rounded-md bg-primary px-4 py-2 text-xs font-bold text-primary-foreground shadow-xl transition-all ${toast ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-2 opacity-0"}`}>
+        <Check size={15} className="shrink-0" /> {toast}
       </div>
     </div>
   );
