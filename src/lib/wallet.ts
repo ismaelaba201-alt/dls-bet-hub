@@ -48,7 +48,7 @@ export function withdrawError(amount: number, balance: number): string | null {
 }
 
 export function buyTierError(tier: Tier, mb: number): string | null {
-  return tier.mb > mb ? "Insufficient Data Balance" : null;
+  return tier.mb > mb ? "Insufficient MB Balance! Deposit MB or play official matchdays to earn data." : null;
 }
 
 export const validPhone = (p: string) => /^0\d{10}$/.test(p.replace(/\s/g, ""));

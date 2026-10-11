@@ -11,20 +11,22 @@ export type WalletModal = null | "activate" | "green" | "deposit" | "bc";
 
 export function WalletPills({ wallet, setModal }: { wallet: Wallet; setModal: (m: WalletModal) => void }) {
   const [bell, setBell] = useState(false);
+  const [readAt, setReadAt] = useState(0);
+  const unread = wallet.txns.filter((t) => t.at > readAt).length;
   return (
     <div className="flex items-center gap-1.5">
       <div className="flex flex-col gap-1">
-        <button onClick={() => setModal(wallet.profile ? "green" : "activate")} aria-label="Data wallet" className="flex h-6 items-center gap-1 rounded-full border border-primary/50 bg-primary/15 px-2 font-mono text-[10px] font-black text-primary">
+        <Button variant="ghost" onClick={() => setModal(wallet.profile ? "green" : "activate")} aria-label="Data wallet" className="flex h-6 items-center gap-1 rounded-full border border-primary/50 bg-primary/15 px-2 font-mono text-[10px] font-black text-primary">
           <Wifi size={11} /> {formatMB(wallet.mb).replace(" ", "")}
-        </button>
-        <button onClick={() => setModal("bc")} aria-label={wallet.settings.currencyName} className="flex h-6 items-center gap-1 rounded-full border border-warning/50 bg-warning/15 px-2 font-mono text-[10px] font-black text-warning">
+        </Button>
+        <Button variant="ghost" onClick={() => setModal("bc")} aria-label={wallet.settings.currencyName} className="flex h-6 items-center gap-1 rounded-full border border-warning/50 bg-warning/15 px-2 font-mono text-[10px] font-black text-warning">
           <Coins size={11} /> {wallet.bc.toLocaleString("en-US")} {wallet.settings.currencySymbol}
-        </button>
+        </Button>
       </div>
       <div className="relative">
-        <Button variant="ghost" size="icon" onClick={() => setBell((v) => !v)} aria-label="Notifications" className="size-8">
+          <Button variant="ghost" size="icon" onClick={() => { setBell((v) => !v); setReadAt(Date.now()); }} aria-label={`Notifications, ${unread} unread`} aria-expanded={bell} className="size-8">
           <Bell size={17} />
-          {wallet.txns.length > 0 && <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-destructive" />}
+          {unread > 0 && <span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-destructive px-1 text-[9px] font-black text-destructive-foreground">{unread > 99 ? "99+" : unread}</span>}
         </Button>
         {bell && (
           <div className="absolute right-0 top-9 z-50 w-64 rounded-lg border border-border bg-background p-3 shadow-xl">
@@ -179,11 +181,11 @@ function BcUser({ wallet, close, notify, onOfficial }: { wallet: Wallet; close: 
       </div>
       <div className="grid grid-cols-2 gap-2">
         {s.tiers.map((t) => (
-          <button key={t.id} onClick={() => buy(t)} className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-left">
+          <Button variant="ghost" key={t.id} onClick={() => buy(t)} className="block h-auto whitespace-normal rounded-lg border border-warning/40 bg-warning/10 p-3 text-left">
             {t.badge && <span className="rounded-sm bg-warning px-1.5 py-0.5 text-[9px] font-black text-background">{t.badge}</span>}
             <p className="mt-2 font-mono text-lg font-black text-warning">{t.bc.toLocaleString("en-US")} {s.currencySymbol}</p>
             <p className="text-[10px] text-muted-foreground">for {formatMB(t.mb)}</p>
-          </button>
+          </Button>
         ))}
       </div>
       <p className="text-center text-[10px] text-muted-foreground">Data balance: {formatMB(wallet.mb)}</p>
