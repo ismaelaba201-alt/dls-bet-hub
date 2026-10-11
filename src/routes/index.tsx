@@ -35,6 +35,7 @@ import { slipLines, type Slip } from "@/lib/slip";
 import stadiumPitch from "@/assets/stadium-pitch.jpg";
 import brandLogo from "@/assets/dls-arena-x-logo.png.asset.json";
 import { Button } from "@/components/ui/button";
+import { DraggableAdmin } from "@/components/DraggableAdmin";
 import { Input } from "@/components/ui/input";
 
 export const Route = createFileRoute("/")({
@@ -161,6 +162,7 @@ function Index() {
           <div className="min-w-0 flex-1" aria-hidden="true" />
           <WalletPills wallet={wallet} setModal={setWalletModal} />
         </header>
+        <DraggableAdmin admin={admin} onToggle={() => setAdmin((value) => !value)} />
 
         <main className="flex-1">
           {tab === "matchday" && (
