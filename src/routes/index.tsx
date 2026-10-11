@@ -35,6 +35,7 @@ import { slipLines, type Slip } from "@/lib/slip";
 import stadiumPitch from "@/assets/stadium-pitch.jpg";
 import brandLogo from "@/assets/dls-arena-x-logo.png.asset.json";
 import { Button } from "@/components/ui/button";
+import { DraggableAdmin } from "@/components/DraggableAdmin";
 import { Input } from "@/components/ui/input";
 
 export const Route = createFileRoute("/")({
@@ -154,15 +155,14 @@ function Index() {
           <div className="flex min-w-0 items-center gap-1.5">
             <img src={brandLogo.url} alt="DLS ARENA X mascot" width={44} height={44} className="size-9 shrink-0 object-contain sm:size-11" />
             <div className="min-w-0">
-              <h1 className="font-heading text-sm font-bold uppercase leading-none sm:text-xl">DLS ARENA <span className="text-warning">X</span></h1>
+              <h1 className="whitespace-nowrap font-heading text-sm font-bold uppercase leading-none sm:text-xl">DLS ARENA <span className="text-warning">X</span></h1>
               <p className="mt-1 text-[7px] font-bold text-warning sm:text-[9px]">PLAY. BET. WIN.</p>
             </div>
           </div>
-          <Button variant="secondary" size="sm" onClick={() => setAdmin((value) => !value)} aria-pressed={admin} className={`h-8 shrink-0 px-2 text-[10px] ${admin ? "border border-primary/60 text-primary" : "border border-border text-muted-foreground"}`}>
-            <UserCog /> {admin ? "Admin: On" : "Admin: Off"}
-          </Button>
+          <div className="min-w-0 flex-1" aria-hidden="true" />
           <WalletPills wallet={wallet} setModal={setWalletModal} />
         </header>
+        <DraggableAdmin admin={admin} onToggle={() => setAdmin((value) => !value)} />
 
         <main className="flex-1">
           {tab === "matchday" && (
