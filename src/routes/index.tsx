@@ -2,20 +2,19 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import {
   ArrowLeft,
+  ChevronRight,
   Check,
-  Clock3,
   Copy,
   FileUp,
   Gamepad2,
   History,
   KeyRound,
   Banknote,
+  Menu,
   Plus,
   Settings2,
   Shirt,
-  Sparkles,
   Trophy,
-  UserCog,
   X,
 } from "lucide-react";
 
@@ -25,6 +24,7 @@ import { History as HistoryView } from "@/components/History";
 import { GameCodeLoader } from "@/components/GameCodeLoader";
 import { FeaturedCarousel } from "@/components/FeaturedCarousel";
 import { OfficialHub } from "@/components/OfficialHub";
+import { JoinGameModal } from "@/components/JoinGameModal";
 import { WalletModals, WalletPills, type WalletModal } from "@/components/Wallet";
 import { useWallet } from "@/hooks/use-wallet";
 import { EXPIRED, loadGame } from "@/lib/games.functions";
@@ -37,6 +37,7 @@ import brandLogo from "@/assets/dls-arena-x-logo.png.asset.json";
 import { Button } from "@/components/ui/button";
 import { DraggableAdmin } from "@/components/DraggableAdmin";
 import { Input } from "@/components/ui/input";
+import { formatMB } from "@/lib/wallet";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -52,23 +53,13 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-type Tab = "matchday" | "betslip" | "gamecode" | "dlshub" | "history";
+type Tab = "matchday" | "betslip" | "dlshub" | "menu";
 type HubView = "landing" | "apk" | "kits";
-
-const tabs: Array<{ id: Tab; label: string; icon: typeof Trophy }> = [
-  { id: "matchday", label: "Matchday", icon: Trophy },
-  { id: "betslip", label: "Bet Slip", icon: Banknote },
-  { id: "gamecode", label: "Game Code", icon: KeyRound },
-  { id: "dlshub", label: "DLS Kits", icon: Shirt },
-  { id: "history", label: "History", icon: History },
-];
-
+type MenuSub = "home" | "history";
 
 function Index() {
   const [tab, setTab] = useState<Tab>("matchday");
   const [admin, setAdmin] = useState(false);
-  const [manual, setManual] = useState(false);
-  const [preview, setPreview] = useState<string | null>(null);
   const [toast, setToast] = useState("");
   const [seconds, setSeconds] = useState(872);
   const [hubView, setHubView] = useState<HubView>("landing");
@@ -80,14 +71,15 @@ function Index() {
   const [betsLoaded, setBetsLoaded] = useState(false);
   const wallet = useWallet();
   const [walletModal, setWalletModal] = useState<WalletModal>(null);
+  const [joinOpen, setJoinOpen] = useState(false);
+  const [menuSub, setMenuSub] = useState<MenuSub>("home");
+
   useEffect(() => {
     try { setBets(JSON.parse(localStorage.getItem("dls-bets") ?? "[]")); } catch {}
     setBetsLoaded(true);
   }, []);
   useEffect(() => { if (betsLoaded) localStorage.setItem("dls-bets", JSON.stringify(bets)); }, [bets, betsLoaded]);
   const slipCount = slipLines(slip, matches).length;
-  const [fixture, setFixture] = useState({ home: "", away: "" });
-  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const timer = window.setInterval(() => setSeconds((value) => (value > 0 ? value - 1 : 899)), 1000);
@@ -100,7 +92,7 @@ function Index() {
     return () => window.clearTimeout(timer);
   }, [toast]);
 
-  void seconds; // ticking state re-renders countdowns every second
+  void seconds;
   const now = Date.now();
   const expired = isExpired(closesAt, now);
 
@@ -131,18 +123,7 @@ function Index() {
   const selectImage = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    if (preview) URL.revokeObjectURL(preview);
-    setPreview(URL.createObjectURL(file));
     setToast("Screenshot added");
-  };
-
-  const addFixture = () => {
-    if (!fixture.home.trim() || !fixture.away.trim()) {
-      setToast("Enter both team names");
-      return;
-    }
-    setToast(`${fixture.home} vs ${fixture.away} added`);
-    setFixture({ home: "", away: "" });
   };
 
   return (
@@ -150,7 +131,7 @@ function Index() {
       <img src={stadiumPitch} alt="Floodlit football stadium" width={1024} height={1536} className="fixed inset-0 h-full w-full object-cover opacity-30" />
       <div className="fixed inset-0 bg-background/80" />
 
-      <div className="relative mx-auto flex min-h-dvh w-full max-w-md flex-col px-3 pb-24 pt-2">
+      <div className="relative mx-auto flex min-h-dvh w-full max-w-md flex-col px-3 pb-28 pt-2">
         <header className="sticky top-0 z-40 -mx-3 mb-2 flex min-h-20 shrink-0 items-center justify-between gap-1.5 border-b border-border bg-background/95 px-3 py-2 backdrop-blur-xl" aria-label="DLS ARENA X header">
           <div className="flex min-w-0 items-center gap-1.5">
             <img src={brandLogo.url} alt="DLS ARENA X mascot" width={44} height={44} className="size-9 shrink-0 object-contain sm:size-11" />
@@ -188,6 +169,8 @@ function Index() {
 
               <FeaturedCarousel now={now} refreshKey={gameCode} onCopy={copyCode} onLoad={loadGameCode} />
 
+              <OfficialHub now={now} onPlay={loadGameCode} />
+
               <div className="flex h-9 items-center justify-center gap-2 overflow-hidden rounded-md border border-border bg-secondary/80 px-3 text-center text-[11px]">
                 <span>🔥</span>
                 <p className="truncate text-muted-foreground">Top Winner: <span className="font-bold text-primary">@Alex</span> won <span className="font-bold text-warning">15 GB</span> on 12.50 Odds</p>
@@ -201,51 +184,160 @@ function Index() {
 
           {tab === "dlshub" && <Hub view={hubView} setView={setHubView} admin={admin} notify={setToast} />}
 
-          {tab === "betslip" && <BetSlip matches={matches} slip={slip} setSlip={setSlip} gameCode={gameCode} expired={expired} notify={setToast} onLoadCode={(g, m, s, c) => { const locked = applyGame(g, m, c, s); setToast(locked ? "Betting is closed for this code" : "Bet code loaded — enter your stake"); }} onPlace={(b) => { wallet.debit(b.currency ?? "MB", b.stake, "Stake", b.betCode ?? b.id); setBets((old) => [b, ...old]); setSlip({}); setTab("history"); setToast("Bet placed — pending result"); }} onBrowse={() => setTab("matchday")} wallet={wallet} openWallet={setWalletModal} onOfficial={() => setTab("gamecode")} />}
+          {tab === "betslip" && <BetSlip matches={matches} slip={slip} setSlip={setSlip} gameCode={gameCode} expired={expired} notify={setToast} onLoadCode={(g, m, s, c) => { const locked = applyGame(g, m, c, s); setToast(locked ? "Betting is closed for this code" : "Bet code loaded — enter your stake"); }} onPlace={(b) => { wallet.debit(b.currency ?? "MB", b.stake, "Stake", b.betCode ?? b.id); setBets((old) => [b, ...old]); setSlip({}); setTab("menu"); setMenuSub("history"); setToast("Bet placed — pending result"); }} onBrowse={() => setTab("matchday")} wallet={wallet} openWallet={setWalletModal} onOfficial={() => setJoinOpen(true)} />}
 
-          {tab === "history" && <HistoryView admin={admin} bets={bets} notify={setToast} onSettle={(b) => { const prev = bets.find((x) => x.id === b.id); if (b.status === "WON" && prev?.status === "PENDING") wallet.credit(b.currency ?? "MB", b.payout, "Win", b.betCode ?? b.id); setBets((old) => old.map((x) => (x.id === b.id ? b : x))); }} />}
-
-          {tab === "gamecode" && (
-            <>
-              <GameCodeLoader onLoaded={(code, m, c) => { if (!applyGame(code, m, c)) { setTab("matchday"); setToast(`${m.length} matches loaded`); } }} />
-              <OfficialHub now={now} onPlay={loadGameCode} />
-            </>
+          {tab === "menu" && (
+            <MenuView
+              sub={menuSub}
+              setSub={setMenuSub}
+              admin={admin}
+              bets={bets}
+              wallet={wallet}
+              notify={setToast}
+              onSettle={(b) => { const prev = bets.find((x) => x.id === b.id); if (b.status === "WON" && prev?.status === "PENDING") wallet.credit(b.currency ?? "MB", b.payout, "Win", b.betCode ?? b.id); setBets((old) => old.map((x) => (x.id === b.id ? b : x))); }}
+              onJoinGame={() => setJoinOpen(true)}
+              onOpenWallet={(m: WalletModal) => setWalletModal(m)}
+              onOfficial={() => setJoinOpen(true)}
+            />
           )}
 
         </main>
       </div>
 
       {tab === "matchday" && slipCount > 0 && (
-        <Button onClick={() => setTab("betslip")} className="fixed bottom-20 right-4 z-40 h-12 rounded-full px-5 text-xs font-black shadow-xl">
-          📋 Bet Slip <span className="ml-1 grid min-w-5 place-items-center rounded-full bg-background px-1.5 text-[10px] text-primary">{slipCount}</span>
+        <Button onClick={() => setTab("betslip")} className="fixed bottom-24 right-4 z-40 h-12 rounded-full px-5 text-xs font-black shadow-xl">
+          Bet Slip <span className="ml-1 grid min-w-5 place-items-center rounded-full bg-background px-1.5 text-[10px] text-primary">{slipCount}</span>
         </Button>
       )}
 
-      <WalletModals wallet={wallet} modal={walletModal} setModal={setWalletModal} admin={admin} notify={setToast} onOfficial={() => setTab("gamecode")} />
+      {joinOpen && (
+        <JoinGameModal
+          onClose={() => setJoinOpen(false)}
+          notify={setToast}
+          onGameLoaded={(code, m, c) => { setJoinOpen(false); const locked = applyGame(code, m, c); setTab("matchday"); setToast(locked ? "Betting is closed for this code" : `${m.length} matches loaded`); }}
+          onBetLoaded={(g, m, s, c) => { setJoinOpen(false); const locked = applyGame(g, m, c, s); setTab("betslip"); setToast(locked ? "Betting is closed for this code" : "Bet slip loaded — enter your stake"); }}
+        />
+      )}
+
+      <WalletModals wallet={wallet} modal={walletModal} setModal={setWalletModal} admin={admin} notify={setToast} onOfficial={() => setJoinOpen(true)} />
 
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 px-2 pb-[max(.55rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-xl" aria-label="Main navigation">
-        <div className="mx-auto grid max-w-md grid-cols-5 gap-1">
-          {tabs.map(({ id, label, icon: Icon }) => (
-            <Button key={id} variant="ghost" onClick={() => { setTab(id); if (id !== "dlshub") setHubView("landing"); }} aria-current={tab === id ? "page" : undefined} className={`h-12 flex-col gap-0.5 px-1 text-[9px] ${tab === id ? "bg-accent text-primary" : "text-muted-foreground"}`}>
-              <Icon size={18} /> {label}
-            </Button>
-          ))}
+        <div className="mx-auto grid max-w-md grid-cols-5 items-center gap-0.5">
+          <NavTab id="matchday" label="Matchday" icon={Trophy} active={tab === "matchday"} onClick={() => { setTab("matchday"); setHubView("landing"); }} />
+
+          <NavTab id="betslip" label="Bet Slip" icon={Banknote} active={tab === "betslip"} onClick={() => setTab("betslip")} badge={slipCount} />
+
+          <div className="flex flex-col items-center justify-center">
+            <button
+              type="button"
+              onClick={() => setJoinOpen(true)}
+              aria-label="Join game"
+              className="relative -mt-6 grid size-14 place-items-center rounded-full border-2 border-primary bg-primary text-primary-foreground shadow-lg shadow-primary/40 transition active:scale-95"
+            >
+              <span className="absolute inset-0 rounded-full bg-primary/30 blur-md" aria-hidden="true" />
+              <KeyRound size={24} className="relative" />
+            </button>
+            <span className="mt-0.5 text-[8px] font-bold text-primary">Join Game</span>
+          </div>
+
+          <NavTab id="dlshub" label="DLS Hub" icon={Gamepad2} active={tab === "dlshub"} onClick={() => setTab("dlshub")} />
+
+          <NavTab id="menu" label="Menu" icon={Menu} active={tab === "menu"} onClick={() => { setTab("menu"); setMenuSub("home"); }} />
         </div>
       </nav>
 
-      <div role="status" aria-live="polite" className={`fixed bottom-20 left-1/2 z-[60] flex w-max max-w-[calc(100%-2rem)] -translate-x-1/2 items-center gap-2 whitespace-normal rounded-md bg-primary px-4 py-2 text-xs font-bold text-primary-foreground shadow-xl transition-all ${toast ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-2 opacity-0"}`}>
+      <div role="status" aria-live="polite" className={`fixed bottom-24 left-1/2 z-[60] flex w-max max-w-[calc(100%-2rem)] -translate-x-1/2 items-center gap-2 whitespace-normal rounded-md bg-primary px-4 py-2 text-xs font-bold text-primary-foreground shadow-xl transition-all ${toast ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-2 opacity-0"}`}>
         <Check size={15} className="shrink-0" /> {toast}
       </div>
     </div>
   );
 }
 
-function TeamBadge({ initials, name, tone }: { initials: string; name: string; tone: "light" | "blue" }) {
+function NavTab({ id, label, icon: Icon, active, onClick, badge }: { id: string; label: string; icon: typeof Trophy; active: boolean; onClick: () => void; badge?: number }) {
   return (
-    <div className="flex min-w-0 flex-col items-center gap-1.5">
-      <div className={`grid size-14 place-items-center rounded-full border-2 text-sm font-black shadow-inner ${tone === "light" ? "border-foreground/70 bg-foreground text-background" : "border-ring bg-ring text-primary-foreground"}`}>{initials}</div>
-      <span className="max-w-24 truncate text-[11px] font-bold">{name}</span>
-    </div>
+    <button
+      type="button"
+      onClick={onClick}
+      aria-current={active ? "page" : undefined}
+      className={`relative flex h-12 flex-col items-center justify-center gap-0.5 px-1 text-[9px] font-bold transition-colors ${active ? "text-primary" : "text-muted-foreground"}`}
+    >
+      {active && <span className="absolute -top-2 h-1 w-8 rounded-full bg-primary shadow-[0_0_8px_2px_var(--color-primary)]" aria-hidden="true" />}
+      <span className="relative">
+        <Icon size={20} className={active ? "drop-shadow-[0_0_4px_var(--color-primary)]" : ""} />
+        {badge != null && badge > 0 && <span className="absolute -right-2 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-destructive px-1 text-[8px] font-black text-destructive-foreground">{badge > 99 ? "99+" : badge}</span>}
+      </span>
+      {label}
+    </button>
+  );
+}
+
+function MenuView({ sub, setSub, admin, bets, wallet, notify, onSettle, onJoinGame, onOpenWallet, onOfficial }: {
+  sub: MenuSub;
+  setSub: (s: MenuSub) => void;
+  admin: boolean;
+  bets: Bet[];
+  wallet: ReturnType<typeof useWallet>;
+  notify: (m: string) => void;
+  onSettle: (b: Bet) => void;
+  onJoinGame: () => void;
+  onOpenWallet: (m: WalletModal) => void;
+  onOfficial: () => void;
+}) {
+  if (sub === "history") {
+    return (
+      <section className="space-y-3">
+        <Button variant="ghost" onClick={() => setSub("home")} className="px-0 text-xs text-primary"><ArrowLeft /> Back to Menu</Button>
+        <HistoryView admin={admin} bets={bets} notify={notify} onSettle={onSettle} />
+      </section>
+    );
+  }
+
+  const pendingCount = bets.filter((b) => b.status === "PENDING").length;
+  const settledCount = bets.filter((b) => b.status !== "PENDING").length;
+
+  return (
+    <section className="space-y-4">
+      <h2 className="px-1 font-heading text-2xl font-bold uppercase">Menu</h2>
+
+      <div className="glass-panel space-y-3 rounded-lg p-4">
+        <div className="grid grid-cols-2 gap-3 text-center">
+          <div className="rounded-md border border-primary/30 bg-primary/10 p-3">
+            <p className="text-[9px] font-bold uppercase text-muted-foreground">Data Wallet</p>
+            <p className="font-mono text-lg font-black text-primary">{formatMB(wallet.mb)}</p>
+          </div>
+          <div className="rounded-md border border-warning/30 bg-warning/10 p-3">
+            <p className="text-[9px] font-bold uppercase text-muted-foreground">{wallet.settings.currencyName}</p>
+            <p className="font-mono text-lg font-black text-warning">{wallet.bc.toLocaleString("en-US")}</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <Button variant="secondary" onClick={() => onOpenWallet(wallet.profile ? "green" : "activate")} className="h-10 text-[10px] font-black uppercase">Data Wallet</Button>
+          <Button variant="secondary" onClick={() => onOpenWallet("bc")} className="h-10 text-[10px] font-black uppercase">{wallet.settings.currencyName}</Button>
+        </div>
+      </div>
+
+      <div className="glass-panel divide-y divide-border overflow-hidden rounded-lg">
+        <MenuRow icon={History} label="Bet History" sub={`${pendingCount} pending • ${settledCount} settled`} onClick={() => setSub("history")} />
+        <MenuRow icon={KeyRound} label="Join Game" sub="Enter game or bet slip code" onClick={onJoinGame} />
+        <MenuRow icon={Trophy} label="Official Matchdays" sub="Play for real data" onClick={onOfficial} />
+        <MenuRow icon={Gamepad2} label="DLS Hub" sub="Kits, logos & APK downloads" onClick={() => { /* handled by nav */ }} />
+      </div>
+
+      <p className="text-center text-[9px] text-muted-foreground">DLS ARENA X — PLAY. BET. WIN.</p>
+    </section>
+  );
+}
+
+function MenuRow({ icon: Icon, label, sub, onClick }: { icon: typeof Trophy; label: string; sub: string; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick} className="flex w-full items-center gap-3 p-3 text-left transition-colors hover:bg-accent/50">
+      <span className="grid size-9 shrink-0 place-items-center rounded-md bg-accent text-primary"><Icon size={18} /></span>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-bold">{label}</p>
+        <p className="text-[10px] text-muted-foreground">{sub}</p>
+      </div>
+      <ChevronRight size={16} className="shrink-0 text-muted-foreground" />
+    </button>
   );
 }
 
