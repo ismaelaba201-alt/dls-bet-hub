@@ -1,3 +1,4 @@
+import { AdminControlPanel } from './admin/AdminControlPanel';
 import { formatMB } from "@/lib/wallet";
 import { useRef, useState, type ChangeEvent } from "react";
 import { createPortal } from "react-dom";
@@ -14,7 +15,13 @@ export function History({ bets, onSettle, notify, admin }: { bets: Bet[]; onSett
   const [view, setView] = useState<"pending" | "settled">("pending");
   const list = bets.filter((b) => (view === "pending" ? b.status === "PENDING" : b.status !== "PENDING")).sort((a, b) => b.placedAt - a.placedAt);
 
-  return (
+   return (
+    <section className="space-y-4">
+      {/* Admin Control Panel inside the Menu tab */}
+      <AdminControlPanel />
+      
+    {/* ... rest of your existing menu/history code ... */}
+    
     <section className="space-y-3">
       {admin && <SubmitResults notify={notify} />}
       <h2 className="px-1 font-heading text-2xl font-bold uppercase">Bet History</h2>
