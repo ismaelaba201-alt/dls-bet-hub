@@ -15,15 +15,14 @@ export function History({ bets, onSettle, notify, admin }: { bets: Bet[]; onSett
   const [view, setView] = useState<"pending" | "settled">("pending");
   const list = bets.filter((b) => (view === "pending" ? b.status === "PENDING" : b.status !== "PENDING")).sort((a, b) => b.placedAt - a.placedAt);
 
-   return (
+     return (
     <section className="space-y-4">
       {/* Admin Control Panel inside the Menu tab */}
       <AdminControlPanel />
+
+      <section className="space-y-3">
+        {admin && <SubmitResults notify={notify} />}
       
-    {/* ... rest of your existing menu/history code ... */}
-    
-    <section className="space-y-3">
-      {admin && <SubmitResults notify={notify} />}
       <h2 className="px-1 font-heading text-2xl font-bold uppercase">Bet History</h2>
       <div className="grid grid-cols-2 gap-1 rounded-md border border-border bg-field p-1">
         {(["pending", "settled"] as const).map((v) => (
