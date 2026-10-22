@@ -1,4 +1,3 @@
-import { AdminControlPanel } from './admin/AdminControlPanel';
 import { useEffect, useState } from "react";
 import { BadgeCheck, Clock3, Play } from "lucide-react";
 
@@ -12,8 +11,7 @@ export function OfficialHub({ now, onPlay }: { now: number; onPlay: (code: strin
   const live = (games ?? []).filter((g) => Date.parse(g.closesAt) > now);
   return (
     <section className="mt-4 space-y-3">
-         {/* Admin Control Panel Integration */}
-      <AdminControlPanel />
+        
       <div className="flex items-center justify-between px-1">
         <h2 className="font-heading text-2xl font-bold uppercase">Official Game Codes</h2>
         <span className="rounded-sm bg-primary/15 px-2 py-1 text-[9px] font-black text-primary">REAL MB</span>
