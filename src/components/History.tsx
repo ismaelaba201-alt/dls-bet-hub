@@ -1,4 +1,3 @@
-
 import { formatMB } from "@/lib/wallet";
 import { useRef, useState, type ChangeEvent } from "react";
 import { createPortal } from "react-dom";
@@ -14,11 +13,6 @@ import { SubmitResults } from "@/components/SubmitResults";
 export function History({ bets, onSettle, notify, admin }: { bets: Bet[]; onSettle: (b: Bet) => void; notify: (m: string) => void; admin: boolean }) {
   const [view, setView] = useState<"pending" | "settled">("pending");
   const list = bets.filter((b) => (view === "pending" ? b.status === "PENDING" : b.status !== "PENDING")).sort((a, b) => b.placedAt - a.placedAt);
-
-     return (
-    <section className="space-y-4">
-      {/* Admin Control Panel inside the Menu tab */}
-      <AdminControlPanel />
 
       <section className="space-y-3">
         {admin && <SubmitResults notify={notify} />}
