@@ -31,6 +31,7 @@ import { EXPIRED, loadGame } from "@/lib/games.functions";
 import { isExpired } from "@/lib/teams";
 import type { Bet } from "@/lib/bets";
 import type { MatchOdds } from "@/lib/odds";
+import { AdminControlPanel } from "@/components/admin/AdminControlPanel";
 import { slipLines, type Slip } from "@/lib/slip";
 import stadiumPitch from "@/assets/stadium-pitch.jpg";
 import brandLogo from "@/assets/dls-arena-x-logo.png.asset.json";
@@ -55,7 +56,7 @@ export const Route = createFileRoute("/")({
 
 type Tab = "matchday" | "betslip" | "dlshub" | "menu";
 type HubView = "landing" | "apk" | "kits";
-type MenuSub = "home" | "history";
+type MenuSub = "home" | "history" | "admin";
 
 function Index() {
   const [tab, setTab] = useState<Tab>("matchday");
@@ -292,6 +293,30 @@ function MenuView({ sub, setSub, admin, bets, wallet, notify, onSettle, onJoinGa
     );
   }
 
+  if (sub === "admin") {
+    if (!admin) {
+      return (
+        <section className="space-y-3">
+          <Button variant="ghost" onClick={() => setSub("home")} className="px-0 text-xs text-primary">
+            <ArrowLeft /> Back to Menu
+          </Button>
+          <p className="rounded-md border border-border p-3 text-sm">
+            Admin Mode is OFF. Turn it on to access the Admin Control Panel.
+          </p>
+        </section>
+      );
+    }
+
+    return (
+      <section className="space-y-3">
+        <Button variant="ghost" onClick={() => setSub("home")} className="px-0 text-xs text-primary">
+          <ArrowLeft /> Back to Menu
+        </Button>
+        <AdminControlPanel />
+      </section>
+    );
+  }
+  
   const pendingCount = bets.filter((b) => b.status === "PENDING").length;
   const settledCount = bets.filter((b) => b.status !== "PENDING").length;
 
@@ -321,6 +346,14 @@ function MenuView({ sub, setSub, admin, bets, wallet, notify, onSettle, onJoinGa
         <MenuRow icon={KeyRound} label="Join Game" sub="Enter game or bet slip code" onClick={onJoinGame} />
         <MenuRow icon={Trophy} label="Official Matchdays" sub="Play for real data" onClick={onOfficial} />
         <MenuRow icon={Gamepad2} label="DLS Hub" sub="Kits, logos & APK downloads" onClick={() => { /* handled by nav */ }} />
+    {admin && (
+  <MenuRow
+    icon={Settings2}
+    label="Admin Control Panel"
+    sub="Manage app administration"
+    onClick={() => setSub("admin")}
+  />
+)}
       </div>
 
       <p className="text-center text-[9px] text-muted-foreground">DLS ARENA X — PLAY. BET. WIN.</p>
