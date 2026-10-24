@@ -43,7 +43,8 @@ export const AdminControlPanel: React.FC = () => {
     return saved ? JSON.parse(saved) : [
       { primaryName: 'FC Barcelona', aliases: ['barcelona', 'barca', 'fc barcelona'] },
       { primaryName: 'Real Madrid', aliases: ['real madrid', 'rmfc', 'merengues'] },
-      { primaryName: 'Gil Vicente FC', aliases: ['barcelos', 'gil vicente', 'gvf'] }
+      { primaryName: 'Gil Vicente FC', aliases: ['barcelos', 'gil vicente', 'gvf'] },
+      { primaryName: 'Tottenham Hotspur', aliases: ['tottenham', 'spurs', 'tottenham hotspur', 'tetienham'] }
     ];
   });
   const [savedLogos, setSavedLogos] = useState<{ primaryName: string; crestUrl: string }[]>(() => {
@@ -184,7 +185,11 @@ export const AdminControlPanel: React.FC = () => {
       group.aliases.includes(uploadTeamName.toLowerCase())
     );
 
-    const targetPrimary = matchedGroup ? matchedGroup.primaryName : uploadTeamName;
+    const targetPrimary = matchedGroup ? matchedGroup.primaryName : uploadTeamName.trim();
+
+    if (!matchedGroup) {
+      setAliasLibrary(current => [...current, { primaryName: targetPrimary, aliases: [targetPrimary.toLowerCase()] }]);
+    }
 
     const filtered = savedLogos.filter(l => l.primaryName.toLowerCase() !== targetPrimary.toLowerCase());
     setSavedLogos([...filtered, { primaryName: targetPrimary, crestUrl: uploadCrestUrl }]);
