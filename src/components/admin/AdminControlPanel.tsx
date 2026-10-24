@@ -54,6 +54,8 @@ export const AdminControlPanel: React.FC = () => {
   });
   const [uploadTeamName, setUploadTeamName] = useState('');
   const [uploadCrestUrl, setUploadCrestUrl] = useState('');
+  const [selectedCrestFileName, setSelectedCrestFileName] = useState('');
+  const crestFileInputRef = React.useRef<HTMLInputElement>(null);
   const [kickoffLockoutTime, setKickoffLockoutTime] = useState(() => localStorage.getItem('admin_kickoff_lock') || '18:00');
 
   // --- Card F: Game Codes Hub State ---
@@ -127,6 +129,49 @@ export const AdminControlPanel: React.FC = () => {
     toast.success(`Successfully parsed team alias entry for ${resolvedPrimary}!`);
   };
 
+  // Handler: Read a phone/gallery image and compress it before storing locally.
+  const handleCrestFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please choose an image file.');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Choose an image smaller than 10 MB.');
+      return;
+    }
+    try {
+      const source = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => typeof reader.result === 'string' ? resolve(reader.result) : reject(new Error('Image could not be read'));
+        reader.onerror = () => reject(new Error('Image could not be read'));
+        reader.readAsDataURL(file);
+      });
+      const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error('Image could not be opened'));
+        img.src = source;
+      });
+      const canvas = document.createElement('canvas');
+      const maxDimension = 256;
+      const scale = Math.min(1, maxDimension / Math.max(image.naturalWidth, image.naturalHeight));
+      canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+      canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+      const context = canvas.getContext('2d');
+      if (!context) throw new Error('Image processing is unavailable');
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      const compressed = canvas.toDataURL('image/webp', 0.82);
+      setUploadCrestUrl(compressed);
+      setSelectedCrestFileName(file.name);
+      toast.success('Image selected. Enter the team name, then save the crest.');
+    } catch {
+      toast.error('Could not read that image. Try another image.');
+    }
+  };
+
   // Handler: Logo Upload
   const handleUploadLogo = () => {
     if (!uploadTeamName.trim() || !uploadCrestUrl.trim()) {
@@ -146,7 +191,8 @@ export const AdminControlPanel: React.FC = () => {
 
     setUploadTeamName('');
     setUploadCrestUrl('');
-    toast.success(`Logo applied across all alias variations for ${targetPrimary}!`);
+    setSelectedCrestFileName('');
+    toast.success(`Logo saved for ${targetPrimary} on this device.`);
   };
       const renderSubView = () => {
     switch (activeView) {
@@ -387,7 +433,7 @@ export const AdminControlPanel: React.FC = () => {
                 rows={3} 
                 value={bulkAliasText}
                 onChange={(e) => setBulkAliasText(e.target.value)}
-                placeholder="Example: Barcelona / FC Barcelona / Barca / Barcelos" 
+                placeholder="Example: Tottenham Hotspur / Tottenham / Spurs / TETIENHAM" 
                 className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs font-mono text-slate-200" 
               />
               <button 
@@ -400,22 +446,46 @@ export const AdminControlPanel: React.FC = () => {
 
             <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
               <h3 className="text-xs font-bold text-amber-300">Connected Logo Upload Form</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                <input 
-                  type="text" 
-                  value={uploadTeamName}
-                  onChange={(e) => setUploadTeamName(e.target.value)}
-                  placeholder="Team Name or Alias (e.g., Barca)" 
-                  className="bg-slate-900 border border-slate-700 rounded p-2 text-xs text-slate-200" 
-                />
-                <input 
-                  type="text" 
-                  value={uploadCrestUrl}
-                  onChange={(e) => setUploadCrestUrl(e.target.value)}
-                  placeholder="Image URL (http://...)" 
-                  className="bg-slate-900 border border-slate-700 rounded p-2 text-xs text-slate-200" 
-                />
+              <input
+                ref={crestFileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleCrestFileChange}
+                className="hidden"
+              />
+              <input
+                type="text"
+                value={uploadTeamName}
+                onChange={(e) => setUploadTeamName(e.target.value)}
+                placeholder="Official team name or alias (e.g., Spurs)"
+                className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-slate-200"
+              />
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => crestFileInputRef.current?.click()}
+                  className="bg-amber-600 hover:bg-amber-500 text-white px-3 py-2 rounded-lg text-xs font-semibold"
+                >
+                  Choose Image from Phone
+                </button>
+                <span className="self-center text-[11px] text-slate-400">
+                  {selectedCrestFileName || 'PNG, JPG, WEBP or another image'}
+                </span>
               </div>
+              <input
+                type="url"
+                value={uploadCrestUrl.startsWith('data:image/') ? '' : uploadCrestUrl}
+                onChange={(e) => { setUploadCrestUrl(e.target.value); setSelectedCrestFileName(''); }}
+                placeholder="Or paste a public image URL"
+                className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-slate-200"
+              />
+              {uploadCrestUrl && (
+                <div className="flex items-center gap-3 rounded-lg border border-slate-800 bg-slate-900 p-2">
+                  <img src={uploadCrestUrl} alt="Selected team crest preview" className="h-14 w-14 rounded object-contain bg-slate-950 p-1" />
+                  <div className="text-[11px] text-slate-300">Crest preview</div>
+                  <button type="button" onClick={() => { setUploadCrestUrl(''); setSelectedCrestFileName(''); }} className="ml-auto text-xs text-rose-400">Remove</button>
+                </div>
+              )}
               <button 
                 onClick={handleUploadLogo} 
                 className="bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 px-4 py-2 rounded-lg text-xs font-semibold"
