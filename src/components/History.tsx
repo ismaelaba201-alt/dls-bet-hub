@@ -12,8 +12,8 @@ import { SubmitResults } from "@/components/SubmitResults";
 
 export function History({ bets, onSettle, notify, admin }: { bets: Bet[]; onSettle: (b: Bet) => void; notify: (m: string) => void; admin: boolean }) {
   const [view, setView] = useState<"pending" | "settled">("pending");
-  const list = bets.filter((b) => (view === "pending" ? b.status === "PENDING" : b.status !== "PENDING")).sort((a, b) => b.placedAt - a.placedAt);
-
+  const list = bets.filter((b) => (view === "pending" ? b.status === "PENDING" : b.status !== "PENDING")).sort((a, b) => b.placedAt - a.placedAt); 
+  return ( 
       <section className="space-y-3">
         {admin && <SubmitResults notify={notify} />}
       
