@@ -47,7 +47,26 @@ export function MatchCreator({ admin, notify, matches, setMatches, slip, setSlip
       const image = await new Promise<string>((ok, bad) => { const r = new FileReader(); r.onload = () => ok(r.result as string); r.onerror = bad; r.readAsDataURL(file); });
       const res = await scanFixtures({ data: { image } });
       if (res.error) notify(res.error);
-      setDraft(res.fixtures.length ? res.fixtures : [{ home: "", away: "", time: "" }]);
+      const normalize = (name: string) => {
+        const clean = name.trim().replace(/\\s+/g, " ");
+        if (!clean) return clean;
+        try {
+          const raw = localStorage.getItem("admin_alias_library");
+          const groups: Array<{ primaryName: string; aliases: string[] }> = raw ? JSON.parse(raw) : [];
+          const key = (value: string) => value.toLocaleLowerCase().normalize("NFKD").replace(/[\\u0300-\\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+          const wanted = key(clean);
+          const match = groups.find((group) => key(group.primaryName) === wanted || group.aliases.some((alias) => key(alias) === wanted));
+          return match?.primaryName ?? clean;
+        } catch {
+          return clean;
+        }
+      };
+      const normalizedFixtures = res.fixtures.map((fixture) => ({
+        ...fixture,
+        home: normalize(fixture.home),
+        away: normalize(fixture.away),
+      }));
+      setDraft(normalizedFixtures.length ? normalizedFixtures : [{ home: "", away: "", time: "" }]);
     } catch { notify("Scan failed, try another image"); } finally { setScanning(false); }
   };
 
