@@ -144,8 +144,14 @@ function Index() {
           <div className="min-w-0 flex-1" aria-hidden="true" />
           <WalletPills wallet={wallet} setModal={setWalletModal} />
         </header>
-        <DraggableAdmin admin={admin} onToggle={() => setAdmin((value) => !value)} />
-
+        <DraggableAdmin
+  admin={admin}
+  onToggle={() => {
+    const next = !admin;
+    setAdmin(next);
+    if (!next) setMenuSub("home");
+  }}
+/>
         <main className="flex-1">
           {tab === "matchday" && (
             <div className="space-y-4">
